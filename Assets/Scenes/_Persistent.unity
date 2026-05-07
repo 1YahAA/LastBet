@@ -425,12 +425,12 @@ MonoBehaviour:
   gameState: {fileID: 11400000, guid: 4a4f38cd020bd6b47b8bc703fff4db4d, type: 2}
   sceneOrder:
   - Scene2_Dressing
-  - Scene1_Cabaret
   - Scene3_Bar
   - Scene4_Casino
   - Scene5_Backstage
   - Scene6_Office
   - Scene7_End
+  - Scene1_Cabaret
 --- !u!4 &1131571242
 Transform:
   m_ObjectHideFlags: 0

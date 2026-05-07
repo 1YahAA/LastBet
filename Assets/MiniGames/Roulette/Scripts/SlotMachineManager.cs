@@ -5,48 +5,8 @@ using TMPro;
 using DG.Tweening;
 
 // ======================================================
-// SlotMachineManager.cs
-//
-// ЧТО ДЕЛАЕТ:
-//   Управляет мини-игрой "Старый автомат" в сцене Roulette.
-//   Реализует механику ключа: кручения, выбор Сломать/Продолжить,
-//   принудительный джекпот на 6-м кручении, токены.
-//
-// ЛОГИКА ТОКЕНОВ:
-//   Джекпот на кручениях 1-3 (до выбора) → +1 Revolt
-//   Выбрал "Сломать"                      → +1 Revolt
-//   Выбрал "Крутить ещё" (после 3-го)    → +1 Obedience
-//     (джекпот на 4, 5, 6 — без доп. токена, только ключ)
-//
-// ПРИНУДИТЕЛЬНЫЙ ДЖЕКПОТ:
-//   На 6-м кручении все три барабана принудительно
-//   ставятся на один символ (ForceSymbol) — выглядит как обычный джекпот.
-//
-// ПОСЛЕ ПОЛУЧЕНИЯ КЛЮЧА:
-//   Реплика Эвелин + плейсхолдер звука → GameManager.LoadNextScene()
-//
-// КУДА КЛАСТЬ:
-//   Assets/MiniGames/Roulette/Scripts/SlotMachineManager.cs
-//
-// ПРИКРЕПЛЯТЬ К:
-//   Пустой объект "SlotMachineManager" в сцене Roulette
-//   + добавить Audio Source на тот же объект
-//
-// В INSPECTOR ЗАПОЛНИТЬ:
-//   reels[]          — три ReelController (Reel_Left, Center, Right)
-//   symbols[]        — 5 спрайтов символов
-//   spinButton       — кнопка "Крутить"
-//   breakButton      — кнопка "Сломать" (скрыта по умолчанию)
-//   continueButton   — кнопка "Крутить ещё" (скрыта по умолчанию)
-//   startPanel       — CanvasGroup стартовой панели
-//   resultPanel      — CanvasGroup панели результата (ключ получен)
-//   choicePanel      — CanvasGroup панели выбора Сломать/Продолжить
-//   resultText       — TextMeshPro реплики Эвелин при получении ключа
-//   startText        — TextMeshPro текста стартовой панели
-//   spinSound        — звук вращения
-//   jackpotSound     — звук джекпота
-//   breakSound       — звук слома автомата
-//   doorSound        — звук открывающейся двери
+// SlotMachineManager.cs — исправленная версия
+// Путь: Assets/MiniGames/Roulette/Scripts/SlotMachineManager.cs
 // ======================================================
 
 public class SlotMachineManager : MonoBehaviour
@@ -56,75 +16,59 @@ public class SlotMachineManager : MonoBehaviour
     public ReelController[] reels = new ReelController[3];
 
     [Header("━━ Символы (5 штук) ━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("[0]=Туз  [1]=Череп  [2]=Бокал  [3]=Маска  [4]=Роза\n" +
-             "Пока нет арта — создай цветные Square спрайты:\n" +
-             "ПКМ → Create → 2D → Sprites → Square")]
     public Sprite[] symbols = new Sprite[5];
 
     [Header("━━ Кнопки ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("Кнопка 'Крутить' — основная")]
+    [Tooltip("Кнопка 'Крутить'")]
     public Button spinButton;
 
-    [Tooltip("Кнопка 'Сломать автомат' — появляется после 3-го кручения.\nВыключена по умолчанию.")]
+    [Tooltip("Кнопка 'Сломать автомат' — внутри ChoicePanel")]
     public Button breakButton;
 
-    [Tooltip("Кнопка 'Крутить ещё' — появляется вместе с 'Сломать'.\nВыключена по умолчанию.")]
+    [Tooltip("Кнопка 'Крутить ещё' — внутри ChoicePanel")]
     public Button continueButton;
 
     [Header("━━ UI панели ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("CanvasGroup стартовой панели (реплика Эвелин + кнопка Играть)")]
+    [Tooltip("Стартовая панель")]
     public CanvasGroup startPanel;
 
-    [Tooltip("CanvasGroup панели результата (ключ получен, реплика, переход)")]
+    [Tooltip("Панель результата (ключ получен)")]
     public CanvasGroup resultPanel;
 
-    [Tooltip("CanvasGroup панели выбора Сломать/Продолжить.\nПоявляется после 3-го кручения.")]
+    [Tooltip("Панель выбора Сломать/Продолжить")]
     public CanvasGroup choicePanel;
 
     [Header("━━ Тексты ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("TextMeshPro финальной реплики Эвелин (ключ получен)")]
     public TextMeshProUGUI resultText;
-
-    [Tooltip("TextMeshPro текста на стартовой панели")]
     public TextMeshProUGUI startText;
 
     [Header("━━ Звуки ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("Звук вращения барабанов")]
     public AudioClip spinSound;
-
-    [Tooltip("Звук джекпота — три одинаковых")]
     public AudioClip jackpotSound;
-
-    [Tooltip("Звук слома автомата")]
     public AudioClip breakSound;
-
-    [Tooltip("Звук открывающейся двери — плейсхолдер")]
     public AudioClip doorSound;
 
     [Header("━━ Настройки ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")]
-    [Tooltip("Задержка между остановками барабанов в секундах")]
-    public float reelStopDelay = 0.4f;
+    [Tooltip("Задержка между остановками барабанов")]
+    public float reelStopDelay = 0.5f;
 
-    [Tooltip("Задержка перед показом результата после остановки")]
-    public float resultDelay   = 0.8f;
+    [Tooltip("Задержка перед показом результата")]
+    public float resultDelay = 0.8f;
 
-    // ── Внутреннее состояние ──────────────────────────
+    // ── Состояние ─────────────────────────────────────
 
     private AudioSource _audio;
     private bool  _isSpinning       = false;
-    private int   _spinCount        = 0;     // сколько раз прокрутили
-    private bool  _chosenToContinue = false; // выбрал ли "Крутить ещё"
-    private int[] _result           = new int[3]; // индексы выпавших символов
+    private int   _spinCount        = 0;
+    private bool  _chosenToContinue = false;
+    private int[] _result           = new int[3];
 
-    // Нарративные тексты
     const string TXT_START     = "Старый автомат. Говорят, он сломан.\nГоворят многое.";
     const string TXT_WIN_EARLY = "Три одинаковых.\nЧто-то щёлкнуло внутри. Ключ?\n\n*звук открывающейся двери*";
     const string TXT_WIN_BREAK = "Рычаг сломался.\nИз щели выпал маленький ключ.\n\n*звук открывающейся двери*";
-    const string TXT_WIN_LATE  = "Наконец-то. Ключ упал на пол.\nАвтомат мигнул последний раз.\n\n*звук открывающейся двери*";
+    const string TXT_WIN_LATE  = "Наконец-то. Ключ упал на пол.\n\n*звук открывающейся двери*";
 
-    // ══════════════════════════════════════════════════
-    // ИНИЦИАЛИЗАЦИЯ
-    // ══════════════════════════════════════════════════
+    // ── Инициализация ─────────────────────────────────
 
     void Awake()
     {
@@ -139,91 +83,73 @@ public class SlotMachineManager : MonoBehaviour
 
         if (startText != null) startText.text = TXT_START;
 
-        // Стартовое состояние UI
         ShowPanel(startPanel, instant: true);
         HidePanel(resultPanel, instant: true);
         HidePanel(choicePanel, instant: true);
 
-        if (spinButton    != null) spinButton.gameObject.SetActive(false);
-        if (breakButton   != null) breakButton.gameObject.SetActive(false);
-        if (continueButton!= null) continueButton.gameObject.SetActive(false);
+        // SpinButton выключена — включится после нажатия "Играть"
+        SetActive(spinButton?.gameObject, false);
     }
 
-    // ══════════════════════════════════════════════════
-    // КНОПКИ — подключать через Button.OnClick в Inspector
-    // ══════════════════════════════════════════════════
+    // ── Кнопки ────────────────────────────────────────
 
-    /// <summary>
-    /// Кнопка "Играть" на стартовой панели.
-    /// Скрывает стартовый экран и показывает кнопку "Крутить".
+    /// Кнопка "Играть" на стартовой панели
     /// Подключить: Button_Start → OnClick → OnStartClicked()
-    /// </summary>
     public void OnStartClicked()
     {
         HidePanel(startPanel, instant: false, onDone: () =>
         {
-            if (spinButton != null) spinButton.gameObject.SetActive(true);
+            SetActive(spinButton?.gameObject, true);
+            if (spinButton != null) spinButton.interactable = true;
         });
     }
 
-    /// <summary>
-    /// Кнопка "Крутить" — основная игровая.
+    /// Кнопка "Крутить"
     /// Подключить: SpinButton → OnClick → OnSpinClicked()
-    /// </summary>
     public void OnSpinClicked()
     {
         if (_isSpinning) return;
         StartCoroutine(SpinRoutine());
     }
 
-    /// <summary>
-    /// Кнопка "Сломать автомат" — появляется после 3-го кручения.
-    /// Даёт +1 Revolt, выдаёт ключ.
+    /// Кнопка "Сломать автомат" (внутри ChoicePanel)
     /// Подключить: BreakButton → OnClick → OnBreakClicked()
-    /// </summary>
     public void OnBreakClicked()
     {
         HidePanel(choicePanel, instant: false);
-        if (spinButton != null) spinButton.gameObject.SetActive(false);
-
         PlaySound(breakSound);
         GameManager.Instance.gameState.AddToken(TokenType.Revolt);
         Debug.Log("[SlotMachine] Сломала → +1 Revolt");
-
         ShowKeyResult(TXT_WIN_BREAK);
     }
 
-    /// <summary>
-    /// Кнопка "Крутить ещё" — появляется после 3-го кручения.
-    /// Даёт +1 Obedience, продолжает игру.
+    /// Кнопка "Крутить ещё" (внутри ChoicePanel)
     /// Подключить: ContinueButton → OnClick → OnContinueClicked()
-    /// </summary>
     public void OnContinueClicked()
     {
-        HidePanel(choicePanel, instant: false);
-
-        // Токен послушания — один раз при первом выборе продолжить
         if (!_chosenToContinue)
         {
             _chosenToContinue = true;
             GameManager.Instance.gameState.AddToken(TokenType.Obedience);
             Debug.Log("[SlotMachine] Выбрала продолжить → +1 Obedience");
         }
+
+        // Скрываем выбор, возвращаем кнопку Крутить
+        HidePanel(choicePanel, instant: false, onDone: () =>
+        {
+            SetActive(spinButton?.gameObject, true);
+            if (spinButton != null) spinButton.interactable = true;
+        });
     }
 
-    /// <summary>
-    /// Кнопка "Продолжить" на финальной панели (ключ получен).
-    /// Переход в следующую сцену.
+    /// Кнопка "Продолжить" на финальной панели
     /// Подключить: Button_Continue → OnClick → OnResultContinueClicked()
-    /// </summary>
     public void OnResultContinueClicked()
     {
         GameManager.Instance.LoadNextScene();
     }
 
-    // ══════════════════════════════════════════════════
-    // ЛОГИКА ВРАЩЕНИЯ
-    // ══════════════════════════════════════════════════
+    // ── Логика вращения ───────────────────────────────
 
     private IEnumerator SpinRoutine()
     {
@@ -235,56 +161,37 @@ public class SlotMachineManager : MonoBehaviour
 
         bool isForcedJackpot = (_spinCount >= 6);
 
-        // Определяем результат
         if (isForcedJackpot)
         {
-            // На 6-м кручении — принудительный джекпот
-            int jackpotSymbol = Random.Range(0, symbols.Length);
-            _result[0] = _result[1] = _result[2] = jackpotSymbol;
-            Debug.Log($"[SlotMachine] Принудительный джекпот на 6-м кручении: символ {jackpotSymbol}");
+            int sym = Random.Range(0, symbols.Length);
+            _result[0] = _result[1] = _result[2] = sym;
+            Debug.Log($"[SlotMachine] Принудительный джекпот: символ {sym}");
         }
         else
         {
-            // Обычные случайные символы
             for (int i = 0; i < 3; i++)
                 _result[i] = Random.Range(0, symbols.Length);
         }
 
         PlaySound(spinSound);
 
-        // Запускаем все барабаны одновременно
         foreach (var reel in reels)
             reel.StartSpin();
 
-        if (isForcedJackpot)
+        // Обычная остановка для всех кручений включая 6-е
+        // На 6-м просто результат предопределён — визуально неотличимо
+        for (int i = 0; i < reels.Length; i++)
         {
-            // На 6-м — даём покрутиться секунду, затем принудительно ставим
-            yield return new WaitForSeconds(1.5f);
-            for (int i = 0; i < reels.Length; i++)
-            {
-                reels[i].ForceSymbol(_result[i]);
-                yield return new WaitForSeconds(0.3f);
-            }
+            yield return new WaitForSeconds(reelStopDelay);
+            reels[i].StopSpin(_result[i]);
         }
-        else
-        {
-            // Обычная остановка поочерёдно
-            for (int i = 0; i < reels.Length; i++)
-            {
-                yield return new WaitForSeconds(reelStopDelay);
-                reels[i].StopSpin(_result[i]);
-            }
-
-            // Ждём пока последний барабан остановился
-            yield return new WaitUntil(() => !reels[reels.Length - 1].IsSpinning);
-        }
+        yield return new WaitUntil(() => !reels[reels.Length - 1].IsSpinning);
 
         yield return new WaitForSeconds(resultDelay);
 
         _isSpinning = false;
 
-        // Проверяем результат
-        bool isJackpot = _result[0] == _result[1] && _result[1] == _result[2];
+        bool isJackpot = (_result[0] == _result[1] && _result[1] == _result[2]);
 
         if (isJackpot)
         {
@@ -292,23 +199,24 @@ public class SlotMachineManager : MonoBehaviour
         }
         else
         {
-            // Не джекпот — показываем выбор если 3+ кручений
+            // После 3-го кручения — показать выбор. До — вернуть кнопку Крутить.
             if (_spinCount >= 3)
+            {
                 ShowChoicePanel();
+            }
             else
+            {
                 if (spinButton != null) spinButton.interactable = true;
+            }
         }
     }
 
-    // Джекпот — выдаём ключ
     private void OnJackpot()
     {
         PlaySound(jackpotSound);
-
         foreach (var reel in reels)
             reel.PlayJackpotEffect();
 
-        // Токен — только если это был ранний джекпот (до выбора "продолжить")
         if (!_chosenToContinue)
         {
             GameManager.Instance.gameState.AddToken(TokenType.Revolt);
@@ -316,32 +224,29 @@ public class SlotMachineManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("[SlotMachine] Джекпот (после продолжения) → токенов нет");
+            Debug.Log("[SlotMachine] Джекпот (после продолжения) → токен не добавляем");
         }
 
         string msg = _spinCount >= 6 ? TXT_WIN_LATE : TXT_WIN_EARLY;
         ShowKeyResult(msg);
     }
 
-    // Показать выбор Сломать/Продолжить
     private void ShowChoicePanel()
     {
-        if (spinButton != null) spinButton.gameObject.SetActive(false);
+        Debug.Log("[SlotMachine] ShowChoicePanel");
+        // Скрываем SpinButton, показываем ChoicePanel
+        SetActive(spinButton?.gameObject, false);
         ShowPanel(choicePanel, instant: false);
     }
 
-    // Показать финальный экран с репликой Эвелин
     private void ShowKeyResult(string text)
     {
         PlaySound(doorSound);
-
         if (resultText != null) resultText.text = text;
         ShowPanel(resultPanel, instant: false);
     }
 
-    // ══════════════════════════════════════════════════
-    // УТИЛИТЫ
-    // ══════════════════════════════════════════════════
+    // ── Утилиты ───────────────────────────────────────
 
     private void PlaySound(AudioClip clip)
     {
@@ -349,37 +254,46 @@ public class SlotMachineManager : MonoBehaviour
             _audio.PlayOneShot(clip);
     }
 
+    private void SetActive(GameObject obj, bool state)
+    {
+        if (obj != null) obj.SetActive(state);
+    }
+
     private void ShowPanel(CanvasGroup g, bool instant, System.Action onDone = null)
     {
-        if (g == null) return;
+        if (g == null) { onDone?.Invoke(); return; }
         g.gameObject.SetActive(true);
         if (instant)
         {
             g.alpha = 1f; g.interactable = true; g.blocksRaycasts = true;
             onDone?.Invoke();
-            return;
         }
-        g.alpha = 0f; g.interactable = false; g.blocksRaycasts = false;
-        g.DOFade(1f, 0.4f).SetUpdate(true).OnComplete(() =>
+        else
         {
-            g.interactable = true; g.blocksRaycasts = true;
-            onDone?.Invoke();
-        });
+            g.alpha = 0f; g.interactable = false; g.blocksRaycasts = false;
+            g.DOFade(1f, 0.4f).SetUpdate(true).OnComplete(() =>
+            {
+                g.interactable = true; g.blocksRaycasts = true;
+                onDone?.Invoke();
+            });
+        }
     }
 
     private void HidePanel(CanvasGroup g, bool instant, System.Action onDone = null)
     {
-        if (g == null) return;
+        if (g == null) { onDone?.Invoke(); return; }
         if (instant)
         {
             g.alpha = 0f; g.interactable = false; g.blocksRaycasts = false;
             g.gameObject.SetActive(false); onDone?.Invoke();
-            return;
         }
-        g.interactable = false; g.blocksRaycasts = false;
-        g.DOFade(0f, 0.35f).SetUpdate(true).OnComplete(() =>
+        else
         {
-            g.gameObject.SetActive(false); onDone?.Invoke();
-        });
+            g.interactable = false; g.blocksRaycasts = false;
+            g.DOFade(0f, 0.35f).SetUpdate(true).OnComplete(() =>
+            {
+                g.gameObject.SetActive(false); onDone?.Invoke();
+            });
+        }
     }
 }

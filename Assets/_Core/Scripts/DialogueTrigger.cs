@@ -109,4 +109,11 @@ public class DialogueTrigger : MonoBehaviour
     {
         GameManager.Instance.LoadMiniGame("Roulette", MiniGameType.Roulette);
     }
+
+    [YarnCommand("enable_door")]
+    public static void YarnEnableDoor()
+    {
+        var director = Object.FindAnyObjectByType<DressingRoomDirector>();
+        if (director != null) director.EnableDoor();
+    }
 }
