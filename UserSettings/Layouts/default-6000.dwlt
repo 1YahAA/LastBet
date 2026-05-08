@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1536
     height: 772.8
   m_ShowMode: 4
-  m_Title: Inspector
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -693,69 +693,60 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -52246
-      - m_Data: -39782
-      - m_Data: -38280
+      - m_Data: -62402
+      - m_Data: -62132
+      - m_Data: -61798
+      - m_Data: -57380
+      - m_Data: -56528
+      - m_Data: -55644
+      - m_Data: -55568
+      - m_Data: -55474
+      - m_Data: -55412
+      - m_Data: -55200
+      - m_Data: -49362
+      - m_Data: -49306
+      - m_Data: -49296
+      - m_Data: -49290
+      - m_Data: -48092
+      - m_Data: -47554
+      - m_Data: -47456
+      - m_Data: -46696
+      - m_Data: -45534
+      - m_Data: -39312
       - m_Data: -35834
-      - m_Data: -34788
-      - m_Data: -34328
-      - m_Data: -33846
-      - m_Data: -33510
-      - m_Data: -33032
-      - m_Data: -31830
-      - m_Data: -31752
-      - m_Data: -31672
-      - m_Data: -31528
-      - m_Data: -29758
-      - m_Data: -28452
-      - m_Data: -28014
-      - m_Data: -26496
-      - m_Data: -26458
-      - m_Data: -26450
-      - m_Data: -26444
-      - m_Data: -25586
-      - m_Data: -24696
-      - m_Data: -24678
-      - m_Data: -24640
-      - m_Data: -24632
-      - m_Data: -24626
-      - m_Data: -24128
-      - m_Data: -23822
-      - m_Data: -23198
-      - m_Data: -22140
-      - m_Data: -21696
-      - m_Data: -18960
-      - m_Data: -18480
-      - m_Data: -4592
-      - m_Data: -3556
-      - m_Data: -3434
-      - m_Data: -2966
-      - m_Data: -2888
-      - m_Data: -2388
-      - m_Data: -2148
-      - m_Data: -1830
-      - m_Data: -1402
+      - m_Data: -25740
+      - m_Data: -18002
+      - m_Data: -17656
+      - m_Data: -17128
+      - m_Data: -16502
+      - m_Data: -16252
+      - m_Data: -16192
+      - m_Data: -15608
+      - m_Data: -10880
+      - m_Data: -9524
+      - m_Data: -8530
+      - m_Data: -5016
+      - m_Data: -4442
+      - m_Data: -2522
+      - m_Data: -1862
+      - m_Data: -1792
+      - m_Data: -1348
       - m_Data: -12
-      - m_Data: 47338
-      - m_Data: 47494
-      - m_Data: 47920
-      - m_Data: 48372
-      - m_Data: 48388
-      - m_Data: 49428
-      - m_Data: 53290
-      - m_Data: 54450
-      - m_Data: 55858
-      - m_Data: 56312
-      - m_Data: 57184
-      - m_Data: 61774
-      - m_Data: 61800
-      - m_Data: 61834
-      - m_Data: 61852
-      - m_Data: 61874
-      - m_Data: 61882
-      - m_Data: 61930
-      - m_Data: 61940
-      - m_Data: 61950
+      - m_Data: 48056
+      - m_Data: 48138
+      - m_Data: 49966
+      - m_Data: 50082
+      - m_Data: 55722
+      - m_Data: 55732
+      - m_Data: 55776
+      - m_Data: 55882
+      - m_Data: 56266
+      - m_Data: 56278
+      - m_Data: 56438
+      - m_Data: 57830
+      - m_Data: 57898
+      - m_Data: 57952
+      - m_Data: 58024
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1293,9 +1284,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 415.7045, y: 186.0867, z: -4.0549254}
+    m_Target: {x: 347.10733, y: 84.1957, z: -0.4149626}
     speed: 2
-    m_Value: {x: 415.7045, y: 186.0867, z: -4.0549254}
+    m_Value: {x: 347.10733, y: 84.1957, z: -0.4149626}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1346,9 +1337,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 306.02887
+    m_Target: 392.6434
     speed: 2
-    m_Value: 306.02887
+    m_Value: 392.6434
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1431,7 +1422,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scenes
+    - Assets/MiniGames/CardGame/Data
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1441,23 +1432,25 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/Scenes
+  - Assets/MiniGames/CardGame/Data
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\Users\alina\Desktop\univer\vkr\LastBet
   m_LockTracker:
     m_IsLocked: 0
   m_LastLocalAssetsSearchArea: 1
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 180}
+    scrollPos: {x: 0, y: 132.40002}
     m_SelectedIDs:
-    - m_Data: 47270
+    - m_Data: 58932
     m_LastClickedID:
-      m_Data: 47270
+      m_Data: 58932
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 46812
-    - m_Data: 46814
-    - m_Data: 46816
+    - m_Data: 47062
+    - m_Data: 47064
+    - m_Data: 47066
+    - m_Data: 47068
+    - m_Data: 47070
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1491,9 +1484,11 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 46812
-    - m_Data: 46814
-    - m_Data: 46816
+    - m_Data: 47062
+    - m_Data: 47064
+    - m_Data: 47066
+    - m_Data: 47068
+    - m_Data: 47070
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1522,9 +1517,9 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 47304
+    - m_Data: -55742
     m_LastClickedEntityId:
-      m_Data: 47304
+      m_Data: -55742
     m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs:
     - m_Data: 47692
