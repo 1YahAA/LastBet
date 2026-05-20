@@ -4,9 +4,10 @@ using UnityEngine.UI;
 public class CardSlot : MonoBehaviour
 {
     public Image slotFrame;
+    public Vector2 placedCardSize = new Vector2(150f, 220f);
 
     public CardData PlacedCard { get; private set; }
-
+    
     public bool HasCard => PlacedCard != null;
 
     private CardView _currentView;
@@ -22,8 +23,10 @@ public class CardSlot : MonoBehaviour
 
         RectTransform rt = cardView.transform as RectTransform;
 
-        rt.SetParent(transform);
+        if (rt == null)
+            return;
 
+        rt.SetParent(transform, false);
         rt.anchorMin = new Vector2(0.5f, 0.5f);
 
         rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -33,8 +36,9 @@ public class CardSlot : MonoBehaviour
         rt.anchoredPosition = Vector2.zero;
 
         rt.localRotation = Quaternion.identity;
-
+        
         rt.localScale = Vector3.one;
+        rt.sizeDelta = placedCardSize;
 
         cardView.SetInteractable(false);
     }

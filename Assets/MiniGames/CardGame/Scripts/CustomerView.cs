@@ -1,10 +1,9 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class CustomerView : MonoBehaviour
 {
-    [Header("UI")]
     public Image portraitImage;
 
     public TextMeshProUGUI bubbleText;
@@ -15,6 +14,7 @@ public class CustomerView : MonoBehaviour
         {
             portraitImage.sprite = portrait;
             portraitImage.enabled = portrait != null;
+            portraitImage.preserveAspect = true;
         }
 
         if (bubbleText != null)
@@ -34,6 +34,6 @@ public class CustomerView : MonoBehaviour
         if (bubbleText != null)
         {
             bubbleText.text = "";
-        }
+        }    
     }
 }

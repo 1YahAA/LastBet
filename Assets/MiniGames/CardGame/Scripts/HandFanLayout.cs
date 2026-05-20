@@ -2,11 +2,13 @@ using UnityEngine;
 
 public class HandFanLayout : MonoBehaviour
 {
-    public float cardSpacing = 115f;
+    [Header("Веер")]
+    public float cardSpacing = 130f;
+    public float maxRotation = 10f;
+    public float arcHeight = 45f;
 
-    public float maxRotation = 12f;
-
-    public float arcHeight = 35f;
+    [Header("Смещение всего веера")]
+    public Vector2 fanOffset = Vector2.zero;
 
     public void Refresh()
     {
@@ -15,7 +17,8 @@ public class HandFanLayout : MonoBehaviour
         if (count == 0)
             return;
 
-        float center = (count - 1) / 2f;
+        float totalWidth = (count - 1) * cardSpacing;
+        float startX = -totalWidth * 0.5f;
 
         for (int i = 0; i < count; i++)
         {
@@ -24,22 +27,24 @@ public class HandFanLayout : MonoBehaviour
             if (rt == null)
                 continue;
 
-            float offset = i - center;
+            float x = startX + i * cardSpacing;
 
-            float normalized = count == 1
-                ? 0f
-                : offset / center;
+            float normalized = 0f;
 
-            float x = offset * cardSpacing;
+            if (count > 1 && totalWidth > 0f)
+                normalized = x / (totalWidth * 0.5f);
 
             float y = -Mathf.Abs(normalized) * arcHeight;
+            float rotation = -normalized * maxRotation;
 
-            float rot = -normalized * maxRotation;
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
 
-            rt.anchoredPosition = new Vector2(x, y);
+            rt.anchoredPosition = fanOffset + new Vector2(x, y);
 
-            rt.localRotation = Quaternion.Euler(0f, 0f, rot);
-
+            rt.localRotation = Quaternion.Euler(0f, 0f, rotation);
+            
             rt.localScale = Vector3.one;
         }
     }

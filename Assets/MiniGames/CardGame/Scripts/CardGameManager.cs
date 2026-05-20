@@ -1,6 +1,7 @@
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using DG.Tweening;
 
 public class CardGameManager : MonoBehaviour
@@ -13,48 +14,35 @@ public class CardGameManager : MonoBehaviour
     [Header("Генерация клиентов")]
     public Sprite[] customerPortraits;
 
-    [TextArea(2, 4)]
-    public string[] requestTexts =
-    {
-        "Люблю горечь. Сделай выразительный напиток.",
-        "Хочу цитрусовый вкус. Без лишней грязи.",
-        "Налей что-нибудь зелёное и крепкое.",
-        "Смешай три разных вкуса.",
-        "Хочу чистый вкус без лишнего.",
-        "Только без тухлятины.",
-        "Мне нужен рискованный напиток.",
-        "Сделай что-нибудь странное, но годное."
-    };
-
-    [Header("UI: Клиент")]
+    [Header("UI")]
     public CustomerView customerView;
+    public CardInfoPanel cardInfoPanel;
 
-    [Header("UI: Слоты ряда")]
     public CardSlot[] rowSlots = new CardSlot[3];
 
-    [Header("UI: Рука игрока")]
     public Transform handPanel;
     public HandFanLayout handFanLayout;
     public GameObject cardViewPrefab;
 
-    [Header("UI: Счёт и раунд")]
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI roundText;
+    public TextMeshProUGUI deckDebugText;
 
-    [Header("UI: Панель результата")]
     public GameObject resultPanel;
     public TextMeshProUGUI resultText;
     public Button continueButton;
 
-    [Header("DEBUG")]
-    public TextMeshProUGUI deckDebugText;
-
     private CardDeck _deck;
-    private CustomerData _currentCustomer;
+    private RuntimeCustomer _currentCustomer;
+
     private int _totalScore;
     private int _currentRound;
 
-    private readonly System.Collections.Generic.List<CardView> _handViews = new();
+    private int _riskRounds;
+    private int _obedienceRounds;
+    private int _analysisRounds;
+
+    private readonly List<CardView> _handViews = new();
 
     private void Start()
     {
@@ -66,15 +54,9 @@ public class CardGameManager : MonoBehaviour
             return;
         }
 
-        if (cardViewPrefab == null)
+        if (handPanel == null || cardViewPrefab == null)
         {
-            Debug.LogError("[CardGameManager] CardViewPrefab не назначен", this);
-            return;
-        }
-
-        if (handPanel == null)
-        {
-            Debug.LogError("[CardGameManager] HandPanel не назначен", this);
+            Debug.LogError("[CardGameManager] HandPanel или CardViewPrefab не назначены", this);
             return;
         }
 
@@ -83,8 +65,15 @@ public class CardGameManager : MonoBehaviour
         if (resultPanel != null)
             resultPanel.SetActive(false);
 
+        if (cardInfoPanel != null)
+            cardInfoPanel.Hide();
+
         _totalScore = 0;
         _currentRound = 0;
+
+        _riskRounds = 0;
+        _obedienceRounds = 0;
+        _analysisRounds = 0;
 
         StartRound();
     }
@@ -96,7 +85,7 @@ public class CardGameManager : MonoBehaviour
         if (roundText != null)
             roundText.text = $"Клиент {_currentRound} / {totalRounds}";
 
-        foreach (var slot in rowSlots)
+        foreach (CardSlot slot in rowSlots)
         {
             if (slot != null)
                 slot.Clear();
@@ -104,17 +93,12 @@ public class CardGameManager : MonoBehaviour
 
         ClearHand();
 
-        _currentCustomer = GenerateRandomCustomer();
+        _currentCustomer = GenerateCustomer();
 
         if (customerView != null)
-        {
-            customerView.Show(
-                _currentCustomer.portraitSprite,
-                _currentCustomer.requestText
-            );
-        }
+            customerView.Show(_currentCustomer.PortraitSprite, _currentCustomer.RequestText);
 
-        var drawnCards = _deck.Draw(cardsToDeal);
+        List<CardData> drawnCards = _deck.Draw(cardsToDeal);
 
         if (drawnCards.Count == 0)
         {
@@ -122,29 +106,28 @@ public class CardGameManager : MonoBehaviour
             return;
         }
 
-        foreach (var data in drawnCards)
-            SpawnCardInHand(data);
+        foreach (CardData card in drawnCards)
+            SpawnCardInHand(card);
 
         RefreshHandLayout();
         UpdateScoreUI();
     }
 
-    private CustomerData GenerateRandomCustomer()
+    private RuntimeCustomer GenerateCustomer()
     {
-        var customer = ScriptableObject.CreateInstance<CustomerData>();
-
-        customer.customerName = "Гость";
+        var customer = new RuntimeCustomer
+        {
+            Name = "Гость",
+            RequiredType = RandomRecipeType(),
+            PreferredType = RandomRecipeType(),
+            BonusForPreferred = 1,
+            RuleType = RandomRule()
+        };
 
         if (customerPortraits != null && customerPortraits.Length > 0)
-            customer.portraitSprite = customerPortraits[Random.Range(0, customerPortraits.Length)];
+            customer.PortraitSprite = customerPortraits[Random.Range(0, customerPortraits.Length)];
 
-        customer.requiredType = RandomRecipeType();
-        customer.preferredType = RandomRecipeType();
-        customer.bonusForPreferred = 1;
-
-        customer.ruleType = RandomRule();
-
-        customer.requestText = BuildRequestText(customer);
+        customer.RequestText = BuildRequestText(customer);
 
         return customer;
     }
@@ -175,44 +158,44 @@ public class CardGameManager : MonoBehaviour
         };
     }
 
-    private string BuildRequestText(CustomerData customer)
+    private string BuildRequestText(RuntimeCustomer customer)
     {
-        if (requestTexts != null && requestTexts.Length > 0)
+        string required = TypeName(customer.RequiredType);
+        string preferred = TypeName(customer.PreferredType);
+
+        return customer.RuleType switch
         {
-            string randomText = requestTexts[Random.Range(0, requestTexts.Length)];
+            CustomerRuleType.NoDamagedCards =>
+                $"Хочу {required}. И никакой тухлятины.",
 
-            if (!string.IsNullOrWhiteSpace(randomText))
-                return randomText;
-        }
+            CustomerRuleType.WantsRainbow =>
+                $"Хочу {required}. Смешай три разных вкуса.",
 
-        string required = TypeName(customer.requiredType);
+            CustomerRuleType.WantsTriplet =>
+                $"Хочу {required}. Сделай чистый вкус.",
 
-        return customer.ruleType switch
-        {
-            CustomerRuleType.NoDamagedCards => $"Хочу {required}. Только без тухлятины.",
-            CustomerRuleType.WantsRainbow => $"Хочу {required}. Смешай три разных вкуса.",
-            CustomerRuleType.WantsTriplet => $"Хочу {required}. Сделай чистый вкус.",
-            CustomerRuleType.NoAdjacencyBonus => $"Хочу {required}. Без хитрых сочетаний.",
-            _ => $"Хочу {required}. Любимый вкус: {TypeName(customer.preferredType)}."
+            CustomerRuleType.NoAdjacencyBonus =>
+                $"Хочу {required}. Без хитрых сочетаний.",
+
+            _ =>
+                $"Хочу {required}. Если добавишь {preferred}, заплачу больше."
         };
     }
 
-    private void SpawnCardInHand(CardData data)
+    private void SpawnCardInHand(CardData card)
     {
-        var go = Instantiate(cardViewPrefab, handPanel);
-        var cv = go.GetComponent<CardView>();
+        GameObject go = Instantiate(cardViewPrefab, handPanel);
+        CardView view = go.GetComponent<CardView>();
 
-        if (cv == null)
+        if (view == null)
         {
             Debug.LogError("[CardGameManager] В CardViewPrefab нет CardView", go);
             Destroy(go);
             return;
         }
 
-        cv.Init(data, this);
-        _handViews.Add(cv);
-
-        go.transform.localScale = Vector3.one;
+        view.Init(card, this);
+        _handViews.Add(view);
     }
 
     private void RefreshHandLayout()
@@ -223,10 +206,10 @@ public class CardGameManager : MonoBehaviour
 
     private void ClearHand()
     {
-        foreach (var cv in _handViews)
+        foreach (CardView view in _handViews)
         {
-            if (cv != null)
-                Destroy(cv.gameObject);
+            if (view != null)
+                Destroy(view.gameObject);
         }
 
         _handViews.Clear();
@@ -237,34 +220,25 @@ public class CardGameManager : MonoBehaviour
         if (cardView == null)
             return;
 
-        bool placed = false;
-
-        foreach (var slot in rowSlots)
+        foreach (CardSlot slot in rowSlots)
         {
-            if (slot == null)
+            if (slot == null || slot.HasCard)
                 continue;
 
-            if (!slot.HasCard)
-            {
-                slot.PlaceCard(cardView);
-                _handViews.Remove(cardView);
-                placed = true;
-                break;
-            }
-        }
+            slot.PlaceCard(cardView);
+            _handViews.Remove(cardView);
+            RefreshHandLayout();
 
-        if (!placed)
+            if (RowFull())
+                EvaluateRound();
+
             return;
-
-        RefreshHandLayout();
-
-        if (RowFull())
-            EvaluateRound();
+        }
     }
 
     private bool RowFull()
     {
-        foreach (var slot in rowSlots)
+        foreach (CardSlot slot in rowSlots)
         {
             if (slot == null || !slot.HasCard)
                 return false;
@@ -275,14 +249,43 @@ public class CardGameManager : MonoBehaviour
 
     private void EvaluateRound()
     {
-        var cards = new CardData[3];
+        CardData[] cards = new CardData[3];
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < rowSlots.Length; i++)
             cards[i] = rowSlots[i].PlacedCard;
 
         RoundScoreResult result = CardGameScoring.CalculateRoundScore(cards, _currentCustomer);
 
+        Debug.Log(
+            $"[CocktailScore] " +
+            $"Score={result.Score}, " +
+            $"Base={result.BaseScore}, " +
+            $"Bonus={result.BonusScore}, " +
+            $"Failed={result.IsFailed}, " +
+            $"Fatal={result.IsFatal}, " +
+            $"Reason={result.Reason}, " +
+            $"Risk={result.UsedRiskCard}, " +
+            $"Damaged={result.UsedDamagedCard}"
+        );
+
+        for (int i = 0; i < cards.Length; i++)
+        {
+            Debug.Log(
+                $"[CocktailCard {i}] " +
+                $"{cards[i].name} | " +
+                $"Type={cards[i].cocktailType} | " +
+                $"Points={cards[i].points} | " +
+                $"Left={cards[i].requiredLeft} | " +
+                $"Right={cards[i].requiredRight} | " +
+                $"AdjBonus={cards[i].adjacencyBonus} | " +
+                $"Effect={cards[i].effectType} | " +
+                $"Target={cards[i].effectTarget}"
+            );
+        }
+
         _deck.AddManyToDiscard(cards);
+
+        TrackStrategy(result);
 
         if (result.IsFatal)
         {
@@ -304,19 +307,72 @@ public class CardGameManager : MonoBehaviour
         });
     }
 
+    private void TrackStrategy(RoundScoreResult result)
+    {
+        if (result == null)
+            return;
+
+        if (result.UsedRiskCard || result.UsedDamagedCard)
+            _riskRounds++;
+
+        if (!result.IsFailed && result.SatisfiedClient && !result.UsedRiskCard && !result.UsedDamagedCard)
+            _obedienceRounds++;
+
+        if (!result.IsFailed && result.BonusScore > result.BaseScore)
+            _analysisRounds++;
+    }
+
+    private CocktailStrategy DetermineStrategy()
+    {
+        if (_riskRounds > _obedienceRounds && _riskRounds >= _analysisRounds)
+            return CocktailStrategy.Revolt;
+
+        if (_analysisRounds > _obedienceRounds)
+            return CocktailStrategy.Analysis;
+
+        return CocktailStrategy.Obedience;
+    }
+
+    private TokenType StrategyToToken(CocktailStrategy strategy)
+    {
+        return strategy switch
+        {
+            CocktailStrategy.Revolt => TokenType.Revolt,
+            CocktailStrategy.Obedience => TokenType.Obedience,
+            CocktailStrategy.Analysis => TokenType.Analysis,
+            _ => TokenType.Analysis
+        };
+    }
+
     private void EndGame(bool won, string reason = "")
     {
         if (resultPanel != null)
             resultPanel.SetActive(true);
 
+        CocktailStrategy strategy = DetermineStrategy();
+
         if (resultText != null)
         {
             if (won)
-                resultText.text = $"Клиент доволен!\nИтого: {_totalScore} очков";
+            {
+                resultText.text =
+                    $"Клиент доволен!\n" +
+                    $"Итого: {_totalScore} / {winScoreThreshold}\n" +
+                    $"Стиль: {StrategyName(strategy)}";
+            }
             else if (string.IsNullOrEmpty(reason))
-                resultText.text = $"Недостаточно качества...\nИтого: {_totalScore} / {winScoreThreshold}";
+            {
+                resultText.text =
+                    $"Недостаточно качества...\n" +
+                    $"Итого: {_totalScore} / {winScoreThreshold}\n" +
+                    $"Стиль: {StrategyName(strategy)}";
+            }
             else
-                resultText.text = $"Поражение!\n{reason}";
+            {
+                resultText.text =
+                    $"Поражение!\n{reason}\n" +
+                    $"Стиль: {StrategyName(strategy)}";
+            }
         }
 
         if (resultPanel != null)
@@ -328,14 +384,31 @@ public class CardGameManager : MonoBehaviour
         if (continueButton != null)
         {
             continueButton.onClick.RemoveAllListeners();
-            continueButton.onClick.AddListener(() =>
-            {
-                if (GameManager.Instance != null)
-                    GameManager.Instance.FinishMiniGame(won);
-                else
-                    Debug.LogWarning("[CardGameManager] GameManager.Instance не найден");
-            });
+            continueButton.onClick.AddListener(() => FinishGame(won, strategy));
         }
+    }
+
+    private void FinishGame(bool won, CocktailStrategy strategy)
+    {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("[CardGameManager] GameManager.Instance не найден");
+            return;
+        }
+
+        GameManager.Instance.FinishMiniGame(won, StrategyToToken(strategy));
+    }
+
+    public void ShowCardInfo(CardData card)
+    {
+        if (cardInfoPanel != null)
+            cardInfoPanel.Show(card);
+    }
+
+    public void HideCardInfo()
+    {
+        if (cardInfoPanel != null)
+            cardInfoPanel.Hide();
     }
 
     private void UpdateScoreUI()
@@ -360,6 +433,17 @@ public class CardGameManager : MonoBehaviour
             CocktailType.Absinthe => "Абсент",
             CocktailType.Damaged => "Испорченная",
             _ => "любой вкус"
+        };
+    }
+
+    private string StrategyName(CocktailStrategy strategy)
+    {
+        return strategy switch
+        {
+            CocktailStrategy.Revolt => "Бунт",
+            CocktailStrategy.Obedience => "Послушание",
+            CocktailStrategy.Analysis => "Анализ",
+            _ => "Анализ"
         };
     }
 }

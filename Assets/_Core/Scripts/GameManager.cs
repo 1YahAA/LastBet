@@ -145,6 +145,14 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
     }
 
+    public void FinishMiniGame(bool won, TokenType token)
+    {
+        gameState.AddToken(token);
+        SaveSystem.Save(gameState);
+        SetState(GameplayState.Playing);
+        SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
+    }
+
     // КОНЦОВКИ
 
     // Загрузить концовку по накопленным жетонам

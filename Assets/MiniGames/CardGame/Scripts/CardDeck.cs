@@ -6,13 +6,23 @@ public class CardDeck : MonoBehaviour
     [Header("Все карты")]
     public List<CardData> allCards = new();
 
-    private List<CardData> _drawPile = new();
-    private List<CardData> _discardPile = new();
+    private readonly List<CardData> _drawPile = new();
+    private readonly List<CardData> _discardPile = new();
+
+    public int DrawPileCount => _drawPile.Count;
+    public int DiscardPileCount => _discardPile.Count;
 
     public void Initialize()
     {
-        _drawPile = new List<CardData>(allCards);
+        _drawPile.Clear();
         _discardPile.Clear();
+
+        foreach (var card in allCards)
+        {
+            if (card != null)
+                _drawPile.Add(card);
+        }
+
         Shuffle(_drawPile);
     }
 
@@ -35,21 +45,13 @@ public class CardDeck : MonoBehaviour
         return drawn;
     }
 
-    public void AddToDiscard(CardData card)
-    {
-        if (card == null)
-            return;
-
-        _discardPile.Add(card);
-    }
-
     public void AddManyToDiscard(IEnumerable<CardData> cards)
     {
-        if (cards == null)
-            return;
-
         foreach (var card in cards)
-            AddToDiscard(card);
+        {
+            if (card != null)
+                _discardPile.Add(card);
+        }
     }
 
     private void ReshuffleDiscardIntoDrawPile()
@@ -57,23 +59,18 @@ public class CardDeck : MonoBehaviour
         if (_discardPile.Count == 0)
             return;
 
-        Debug.Log("[CardDeck] Сброс перемешан обратно в колоду");
-
-        _drawPile = new List<CardData>(_discardPile);
+        _drawPile.AddRange(_discardPile);
         _discardPile.Clear();
-
         Shuffle(_drawPile);
+        Debug.Log("[CardDeck] Сброс перемешан обратно в колоду");
     }
 
-    private void Shuffle(List<CardData> list)
+    private void Shuffle(List<CardData> cards)
     {
-        for (int i = list.Count - 1; i > 0; i--)
+        for (int i = cards.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            (list[i], list[j]) = (list[j], list[i]);
+            (cards[i], cards[j]) = (cards[j], cards[i]);
         }
     }
-
-    public int DrawPileCount => _drawPile.Count;
-    public int DiscardPileCount => _discardPile.Count;
 }
