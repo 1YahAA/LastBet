@@ -5,6 +5,7 @@
   <Project Path="UnityEngine.TestRunner.csproj" />
   <Project Path="Unity.2D.Tilemap.Editor.csproj" />
   <Project Path="LastBet.Core.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
   <Project Path="Unity.PerformanceTesting.csproj" />
   <Project Path="Unity.TextMeshPro.csproj" />
@@ -15,7 +16,6 @@
   <Project Path="DOTween.Modules.csproj" />
   <Project Path="Unity.Collections.CodeGen.csproj" />
   <Project Path="UnityEditor.UI.Analytics.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.InternalAPIEngineBridge.004.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
   <Project Path="Tests.csproj" />

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfc840cb0150dc649aacedc8d6529603, type: 3}
   m_Name: absinthe_2b
   m_EditorClassIdentifier: Assembly-CSharp::CardData
+  displayName: "\u0410\u0431\u0441\u0435\u043D\u0442"
   cocktailType: 3
   points: 2
   cardSprite: {fileID: 21300000, guid: a1e5ea825db54d54bb999be37b393fe4, type: 3}

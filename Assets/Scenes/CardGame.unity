@@ -762,8 +762,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.0010262, y: 126.3216}
-  m_SizeDelta: {x: 374.77, y: 55.3569}
+  m_AnchoredPosition: {x: -0.0010262, y: 103.13839}
+  m_SizeDelta: {x: 374.77, y: 126.5232}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &697220693
 MonoBehaviour:
@@ -812,8 +812,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 28
+  m_fontSizeBase: 28
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -893,16 +893,16 @@ RectTransform:
   m_GameObject: {fileID: 802145958}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 0.36048853, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1428439345}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 3.3732, y: 7}
-  m_SizeDelta: {x: 1200, y: 1102}
-  m_Pivot: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: 0, y: 204}
+  m_SizeDelta: {x: 1200, y: 400}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &802145960
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -918,6 +918,7 @@ MonoBehaviour:
   cardSpacing: 130
   maxRotation: 10
   arcHeight: 45
+  fanOffset: {x: 0, y: 0}
 --- !u!114 &802145961
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1265,8 +1266,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.0010262, y: -6.2016}
-  m_SizeDelta: {x: 374.77, y: 320.4}
+  m_AnchoredPosition: {x: -0.0010262, y: -63.262}
+  m_SizeDelta: {x: 374.77, y: 206.28}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1087572194
 MonoBehaviour:
@@ -1315,8 +1316,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 28
-  m_fontSizeBase: 28
+  m_fontSize: 25
+  m_fontSizeBase: 25
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1354,7 +1355,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 55.35482, z: 0, w: 0}
+  m_margin: {x: 0, y: 1.775177, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -1743,8 +1744,9 @@ GameObject:
   - component: {fileID: 1303949978}
   - component: {fileID: 1303949980}
   - component: {fileID: 1303949979}
+  - component: {fileID: 1303949981}
   m_Layer: 5
-  m_Name: Panel
+  m_Name: CardInfoPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1768,8 +1770,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 477.4623, y: -28.3369}
-  m_SizeDelta: {x: -1507.2322, y: -769.0007}
+  m_AnchoredPosition: {x: 826.5719, y: 358}
+  m_SizeDelta: {x: -1653.1238, y: -769.0007}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1303949979
 MonoBehaviour:
@@ -1784,7 +1786,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0}
+  m_Color: {r: 0.23773581, g: 0, b: 0, a: 0.9372549}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1809,6 +1811,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1303949977}
   m_CullTransparentMesh: 1
+--- !u!114 &1303949981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1303949977}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6964aebf0e9db844c92629d11b09de75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CardInfoPanel
+  titleText: {fileID: 697220693}
+  descriptionText: {fileID: 1087572194}
 --- !u!1 &1428439341
 GameObject:
   m_ObjectHideFlags: 0
@@ -2126,7 +2142,7 @@ MonoBehaviour:
   - {fileID: 7828678213467250618, guid: 259c040dd78348f4eb59f55addb4aacb, type: 3}
   - {fileID: 9018571469612732515, guid: fdd8a0d0dcf450f458c955048acd288b, type: 3}
   customerView: {fileID: 296054136}
-  cardInfoPanel: {fileID: 0}
+  cardInfoPanel: {fileID: 1303949981}
   rowSlots:
   - {fileID: 1205912403}
   - {fileID: 1789868349}
@@ -2670,8 +2686,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 505, y: -25.680214}
-  m_SizeDelta: {x: -1414.528, y: 361.4716}
+  m_AnchoredPosition: {x: 467.89694, y: -0.8944}
+  m_SizeDelta: {x: -1488.734, y: 311.8999}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2141391205
 MonoBehaviour:

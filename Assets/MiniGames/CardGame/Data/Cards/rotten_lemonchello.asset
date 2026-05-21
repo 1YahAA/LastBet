@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfc840cb0150dc649aacedc8d6529603, type: 3}
   m_Name: rotten_lemonchello
   m_EditorClassIdentifier: Assembly-CSharp::CardData
+  displayName: "\u0418\u0441\u043F\u043E\u0440\u0447\u0435\u043D\u043D\u043E\u0435
+    \u041B\u0438\u043C\u043E\u043D\u0447\u0435\u043B\u043B\u043E"
   cocktailType: 4
   points: -1
   cardSprite: {fileID: 21300000, guid: 8777db49805c6ce45a950c1c897c148d, type: 3}

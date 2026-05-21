@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfc840cb0150dc649aacedc8d6529603, type: 3}
   m_Name: orange_peel
   m_EditorClassIdentifier: Assembly-CSharp::CardData
+  displayName: "\u0410\u043F\u0435\u043B\u044C\u0441\u0438\u043D\u043E\u0432\u0430\u044F
+    \u0446\u0435\u0434\u0440\u0430"
   cocktailType: 0
   points: 0
   cardSprite: {fileID: 21300000, guid: fea9e5cc537cc094cac7dfbd37972db4, type: 3}
