@@ -38,6 +38,7 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
         IsOpen = false;
         IsLocked = false;
 
+        ResetVisualState();
         ShowBackInstant();
     }
 
@@ -66,6 +67,9 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
 
     public void Close()
     {
+        if (IsLocked)
+            return;
+
         IsOpen = false;
         transform.DOKill();
 
@@ -87,7 +91,26 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
 
-        group.alpha = 0.55f;
+        group.alpha = 0.65f;
+        transform.DOKill();
+    }
+
+    public void ForceCloseFromJoker()
+    {
+        IsOpen = false;
+
+        CanvasGroup group = GetComponent<CanvasGroup>();
+        if (group == null)
+            group = gameObject.AddComponent<CanvasGroup>();
+
+        group.alpha = 1f;
+        group.blocksRaycasts = true;
+        group.interactable = true;
+
+        transform.DOKill();
+        transform.localScale = Vector3.one;
+
+        ShowBackInstant();
     }
 
     public void Shake()
@@ -96,12 +119,22 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
         transform.DOShakePosition(0.25f, 8f, 12);
     }
 
+    public void HighlightFalseLead()
+    {
+        transform.DOKill();
+        transform.DOScale(1.08f, 0.12f)
+            .SetLoops(2, LoopType.Yoyo);
+    }
+
     public void ShowBackInstant()
     {
+        transform.localScale = Vector3.one;
+        
         if (backImage != null)
         {
             backImage.sprite = _backSprite;
             backImage.enabled = true;
+            backImage.preserveAspect = true;
         }
 
         if (baseImage != null)
@@ -128,6 +161,7 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
         {
             baseImage.sprite = _baseSprite;
             baseImage.enabled = _baseSprite != null;
+            baseImage.preserveAspect = true;
         }
 
         bool isJoker = Data != null && Data.IsJoker;
@@ -152,6 +186,19 @@ public class BlackMarkCardView : MonoBehaviour, IPointerClickHandler
         {
             frameImage.sprite = _frameSprite;
             frameImage.enabled = _frameSprite != null;
+            frameImage.preserveAspect = true;
         }
+
+        IsOpen = true;
+    }
+
+    private void ResetVisualState()
+    {
+        CanvasGroup group = GetComponent<CanvasGroup>();
+        if (group == null)
+            group = gameObject.AddComponent<CanvasGroup>();
+
+        group.alpha = 1f;
+        transform.localScale = Vector3.one;
     }
 }

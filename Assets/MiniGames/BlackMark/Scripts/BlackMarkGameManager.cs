@@ -11,6 +11,15 @@ public class BlackMarkGameManager : MonoBehaviour
     public int startLives = 3;
     public int maxJokerActivations = 3;
     public float hintPreviewSeconds = 2f;
+    public float openedPairCheckDelay = 0.35f;
+    public float wrongPairCloseDelay = 0.35f;
+    public float panicDuration = 1.4f;
+
+    [Header("Joker Feedback")]
+    public float jokerMessageDelay = 0.8f;
+    public int jokerMoveEveryTurns = 3;
+
+    private int _playerTurns;
 
     [Header("Карты")]
     public BlackMarkCardView cardPrefab;
@@ -29,7 +38,6 @@ public class BlackMarkGameManager : MonoBehaviour
     public TextMeshProUGUI hintText;
     public TextMeshProUGUI statusText;
     public TextMeshProUGUI targetText;
-    public Image targetImage;
     public GameObject panicOverlay;
     public GameObject resultPanel;
     public TextMeshProUGUI resultText;
@@ -40,7 +48,7 @@ public class BlackMarkGameManager : MonoBehaviour
 
     private readonly List<BlackMarkCardView> _cards = new();
 
-    private BlackMarkState _state;
+    private BlackMarkState _state = BlackMarkState.Idle;
     private ClueType _correctClue;
     private BlackMarkCardView _firstOpen;
     private BlackMarkCardView _secondOpen;
@@ -50,7 +58,9 @@ public class BlackMarkGameManager : MonoBehaviour
     private int _jokerActivations;
     private int _mistakes;
     private int _falsePairsFound;
+    private int _wrongPairs;
     private bool _timerRunning;
+    private bool _isResolving;
 
     private void Start()
     {
@@ -79,21 +89,27 @@ public class BlackMarkGameManager : MonoBehaviour
     {
         _state = BlackMarkState.ShowHint;
 
+        _playerTurns = 0;
+
         _timeLeft = roundTime;
         _lives = startLives;
         _jokerActivations = 0;
         _mistakes = 0;
         _falsePairsFound = 0;
+        _wrongPairs = 0;
 
         _firstOpen = null;
         _secondOpen = null;
         _timerRunning = false;
+        _isResolving = false;
 
         if (resultPanel != null)
             resultPanel.SetActive(false);
 
         if (panicOverlay != null)
             panicOverlay.SetActive(false);
+
+        SetMainUiVisible(true);
 
         GenerateRound();
         UpdateUI();
@@ -104,16 +120,12 @@ public class BlackMarkGameManager : MonoBehaviour
     private IEnumerator ShowHintThenStart()
     {
         if (statusText != null)
-            statusText.text = "Запомни улику.";
-
-        RevealCorrectPairForPreview(true);
+            statusText.text = "Изучи подсказку.";
 
         yield return new WaitForSeconds(hintPreviewSeconds);
 
-        RevealCorrectPairForPreview(false);
-
         if (statusText != null)
-            statusText.text = "Найди Чёрную метку.";
+            statusText.text = "Найди настоящую пару.";
 
         _state = BlackMarkState.Gameplay;
         _timerRunning = true;
@@ -130,13 +142,6 @@ public class BlackMarkGameManager : MonoBehaviour
 
         if (targetText != null)
             targetText.text = $"Цель: {ClueName(_correctClue)}";
-
-        if (targetImage != null)
-        {
-            targetImage.sprite = GetSprite(_correctClue);
-            targetImage.enabled = targetImage.sprite != null;
-            targetImage.preserveAspect = true;
-        }
 
         var instances = new List<BlackMarkCardInstance>();
 
@@ -189,7 +194,10 @@ public class BlackMarkGameManager : MonoBehaviour
 
     public void OnCardClicked(BlackMarkCardView card)
     {
-        if (_state != BlackMarkState.Gameplay || card == null)
+        if (_state != BlackMarkState.Gameplay || card == null || _isResolving)
+            return;
+
+        if (card.Data == null)
             return;
 
         if (_firstOpen != null && _secondOpen != null)
@@ -214,31 +222,93 @@ public class BlackMarkGameManager : MonoBehaviour
             _secondOpen = card;
             StartCoroutine(CheckOpenedPair());
         }
+
+        if (!card.Data.IsJoker)
+        {
+            _playerTurns++;
+
+            if (_playerTurns % jokerMoveEveryTurns == 0)
+                MoveJokerToRandomClosedPosition();
+        }
     }
 
+    private void MoveJokerToRandomClosedPosition()
+    {
+        BlackMarkCardView joker = null;
+        var candidates = new List<BlackMarkCardView>();
+
+        foreach (var card in _cards)
+        {
+            if (card == null || card.Data == null)
+                continue;
+
+            if (card.Data.IsJoker)
+            {
+                joker = card;
+                continue;
+            }
+
+            if (!card.IsOpen && !card.IsLocked)
+                candidates.Add(card);
+        }
+
+        if (joker == null || candidates.Count == 0)
+            return;
+
+        BlackMarkCardView target = candidates[Random.Range(0, candidates.Count)];
+
+        int jokerIndex = joker.transform.GetSiblingIndex();
+        int targetIndex = target.transform.GetSiblingIndex();
+
+        joker.transform.SetSiblingIndex(targetIndex);
+        target.transform.SetSiblingIndex(jokerIndex);
+
+        joker.ForceCloseFromJoker();
+    }
+    
     private IEnumerator CheckOpenedPair()
     {
-        yield return new WaitForSeconds(0.35f);
+        _isResolving = true;
+        _state = BlackMarkState.CheckWin;
+
+        yield return new WaitForSeconds(openedPairCheckDelay);
 
         if (_firstOpen == null || _secondOpen == null)
+        {
+            _isResolving = false;
+            _state = BlackMarkState.Gameplay;
             yield break;
+        }
 
         bool sameClue = _firstOpen.Data.ClueType == _secondOpen.Data.ClueType;
 
         if (!sameClue)
         {
             _mistakes++;
-            LoseLife("Ошибка");
+            _wrongPairs++;
+
+            if (statusText != null)
+                statusText.text = "Улики не совпали.";
 
             _firstOpen.Shake();
             _secondOpen.Shake();
 
-            yield return new WaitForSeconds(0.25f);
+            LoseLife(null);
 
-            _firstOpen.Close();
-            _secondOpen.Close();
+            yield return new WaitForSeconds(wrongPairCloseDelay);
+
+            if (_firstOpen != null)
+                _firstOpen.ForceCloseFromJoker();
+
+            if (_secondOpen != null)
+                _secondOpen.ForceCloseFromJoker();
 
             ResetSelection();
+
+            if (_state != BlackMarkState.Lose)
+                _state = BlackMarkState.Gameplay;
+
+            _isResolving = false;
             yield break;
         }
 
@@ -246,6 +316,8 @@ public class BlackMarkGameManager : MonoBehaviour
         {
             _firstOpen.LockOpen();
             _secondOpen.LockOpen();
+
+            _isResolving = false;
             Win();
             yield break;
         }
@@ -253,23 +325,27 @@ public class BlackMarkGameManager : MonoBehaviour
         _falsePairsFound++;
 
         if (statusText != null)
-            statusText.text = "Ложный след.";
+            statusText.text = "Ложный след. Это не настоящая улика.";
 
         _firstOpen.LockOpen();
         _secondOpen.LockOpen();
 
         ResetSelection();
+
+        if (_state != BlackMarkState.Lose)
+            _state = BlackMarkState.Gameplay;
+
+        _isResolving = false;
     }
 
     private IEnumerator HandleJoker(BlackMarkCardView jokerCard)
     {
+        _isResolving = true;
         _state = BlackMarkState.JokerEvent;
         _jokerActivations++;
 
         if (statusText != null)
             statusText.text = "Джокер вмешался.";
-
-        LoseLife(null);
 
         yield return new WaitForSeconds(0.25f);
 
@@ -278,11 +354,11 @@ public class BlackMarkGameManager : MonoBehaviour
         switch (effect)
         {
             case JokerEffectType.Fog:
-                ApplyFog();
+                yield return StartCoroutine(ApplyFog());
                 break;
 
             case JokerEffectType.Swap:
-                ApplySwap();
+                yield return StartCoroutine(ApplySwap());
                 break;
 
             case JokerEffectType.FalseLead:
@@ -294,25 +370,34 @@ public class BlackMarkGameManager : MonoBehaviour
                 break;
         }
 
-        jokerCard.Close();
+        if (jokerCard != null)
+            jokerCard.ForceCloseFromJoker();
+
         ResetSelection();
 
-        yield return new WaitForSeconds(0.4f);
-
-        if (_lives <= 0)
-        {
-            Lose("Закончились жизни");
-            yield break;
-        }
+        yield return new WaitForSeconds(0.25f);
 
         if (_jokerActivations >= maxJokerActivations)
         {
             Lose("Джокер сорвал расследование");
+            _isResolving = false;
             yield break;
         }
 
-        _state = BlackMarkState.Gameplay;
-        UpdateUI();
+        if (_lives <= 0)
+        {
+            Lose("Закончились жизни");
+            _isResolving = false;
+            yield break;
+        }
+
+        if (_state != BlackMarkState.Lose && _state != BlackMarkState.Win)
+        {
+            MoveJokerToRandomClosedPosition();
+            _state = BlackMarkState.Gameplay;
+            _isResolving = false;
+            UpdateUI();
+        }
     }
 
     private JokerEffectType RollJokerEffect()
@@ -331,28 +416,56 @@ public class BlackMarkGameManager : MonoBehaviour
         return JokerEffectType.Panic;
     }
 
-    private void ApplyFog()
+    private IEnumerator ApplyFog()
     {
-        int closed = 0;
+        if (statusText != null)
+            statusText.text = "Джокер напустил туман.";
+
+        if (panicOverlay != null)
+            panicOverlay.SetActive(true);
+
+        yield return new WaitForSeconds(0.7f);
+
+        var candidates = new List<BlackMarkCardView>();
 
         foreach (var card in _cards)
         {
-            if (card == null || card.Data.IsJoker || !card.IsOpen || card.IsLocked)
+            if (card == null || card.Data == null || card.Data.IsJoker)
                 continue;
 
-            card.Close();
-            closed++;
-
-            if (closed >= 3)
-                break;
+            if (card.IsOpen && !card.IsLocked)
+                candidates.Add(card);
         }
 
+        Shuffle(candidates);
+
+        int count = Mathf.Min(Random.Range(2, 4), candidates.Count);
+
+        for (int i = 0; i < count; i++)
+        {
+            candidates[i].Shake();
+            candidates[i].ForceCloseFromJoker();
+            yield return new WaitForSeconds(0.15f);
+        }
+
+        if (panicOverlay != null)
+            panicOverlay.SetActive(false);
+
         if (statusText != null)
-            statusText.text = "Туман скрыл часть улик.";
+            statusText.text = count > 0
+                ? $"Туман скрыл улик: {count}."
+                : "Туман скрыл поле, но открытых улик не было.";
+
+        yield return new WaitForSeconds(0.8f);
     }
 
-    private void ApplySwap()
+    private IEnumerator ApplySwap()
     {
+        if (statusText != null)
+            statusText.text = "Джокер меняет карты местами.";
+
+        yield return new WaitForSeconds(jokerMessageDelay);
+
         var candidates = new List<BlackMarkCardView>();
 
         foreach (var card in _cards)
@@ -362,13 +475,24 @@ public class BlackMarkGameManager : MonoBehaviour
         }
 
         if (candidates.Count < 2)
-            return;
+        {
+            if (statusText != null)
+                statusText.text = "Подмена не удалась.";
+
+            yield return new WaitForSeconds(jokerMessageDelay);
+            yield break;
+        }
 
         int a = Random.Range(0, candidates.Count);
         int b = Random.Range(0, candidates.Count);
 
         while (b == a)
             b = Random.Range(0, candidates.Count);
+
+        candidates[a].Shake();
+        candidates[b].Shake();
+
+        yield return new WaitForSeconds(0.3f);
 
         int indexA = candidates[a].transform.GetSiblingIndex();
         int indexB = candidates[b].transform.GetSiblingIndex();
@@ -377,53 +501,122 @@ public class BlackMarkGameManager : MonoBehaviour
         candidates[b].transform.SetSiblingIndex(indexA);
 
         if (statusText != null)
-            statusText.text = "Карты поменялись местами.";
+            statusText.text = "Две закрытые карты поменялись местами.";
+
+        yield return new WaitForSeconds(jokerMessageDelay);
     }
 
     private IEnumerator ApplyFalseLead()
     {
         if (statusText != null)
-            statusText.text = "Кажется, это почти она...";
+            statusText.text = "Джокер показывает ложную улику.";
+
+        yield return new WaitForSeconds(jokerMessageDelay);
 
         var falseCards = new List<BlackMarkCardView>();
 
         foreach (var card in _cards)
         {
-            if (card == null || card.Data.IsJoker || card.Data.ClueType == _correctClue)
+            if (card == null || card.Data == null)
+                continue;
+
+            if (card.Data.IsJoker || card.Data.ClueType == _correctClue)
+                continue;
+
+            if (card.IsLocked)
                 continue;
 
             falseCards.Add(card);
         }
 
-        if (falseCards.Count > 0)
+        if (falseCards.Count == 0)
         {
-            BlackMarkCardView card = falseCards[Random.Range(0, falseCards.Count)];
-            card.Open();
+            if (statusText != null)
+                statusText.text = "Ложный след не найден.";
 
-            yield return new WaitForSeconds(0.6f);
-
-            if (!card.IsLocked)
-                card.Close();
+            yield return new WaitForSeconds(jokerMessageDelay);
+            yield break;
         }
+
+        ClueType falseClue = falseCards[Random.Range(0, falseCards.Count)].Data.ClueType;
+
+        var pair = new List<BlackMarkCardView>();
+
+        foreach (var card in falseCards)
+        {
+            if (card.Data.ClueType == falseClue)
+                pair.Add(card);
+        }
+
+        foreach (var card in pair)
+        {
+            card.Open();
+            card.HighlightFalseLead();
+        }
+
+        if (statusText != null)
+            statusText.text = $"Ложная улика: {ClueName(falseClue)}.";
+
+        yield return new WaitForSeconds(1.4f);
+
+        foreach (var card in pair)
+        {
+            if (card != null && !card.IsLocked)
+                card.ForceCloseFromJoker();
+        }
+
+        if (statusText != null)
+            statusText.text = "Не доверяй подсказке Джокера.";
+
+        yield return new WaitForSeconds(jokerMessageDelay);
     }
 
     private IEnumerator ApplyPanic()
     {
+        if (statusText != null)
+            statusText.text = "Паника. Подсказки скрыты.";
+
         if (panicOverlay != null)
             panicOverlay.SetActive(true);
 
-        if (statusText != null)
-            statusText.text = "Паника.";
+        if (timerText != null)
+            timerText.gameObject.SetActive(false);
 
-        yield return new WaitForSeconds(5f);
+        if (livesText != null)
+            livesText.gameObject.SetActive(false);
+
+        if (hintText != null)
+            hintText.gameObject.SetActive(false);
+
+        if (targetText != null)
+            targetText.gameObject.SetActive(false);
+
+        yield return new WaitForSeconds(1.5f);
+
+        if (timerText != null)
+            timerText.gameObject.SetActive(true);
+
+        if (livesText != null)
+            livesText.gameObject.SetActive(true);
+
+        if (hintText != null)
+            hintText.gameObject.SetActive(true);
+
+        if (targetText != null)
+            targetText.gameObject.SetActive(true);
 
         if (panicOverlay != null)
             panicOverlay.SetActive(false);
+
+        if (statusText != null)
+            statusText.text = "Паника прошла.";
+
+        yield return new WaitForSeconds(jokerMessageDelay);
     }
 
     private void LoseLife(string message)
     {
-        _lives--;
+        _lives = Mathf.Max(0, _lives - 1);
 
         if (!string.IsNullOrEmpty(message) && statusText != null)
             statusText.text = message;
@@ -436,6 +629,9 @@ public class BlackMarkGameManager : MonoBehaviour
 
     private void Win()
     {
+        if (_state == BlackMarkState.Lose)
+            return;
+
         _state = BlackMarkState.Win;
         _timerRunning = false;
 
@@ -464,8 +660,7 @@ public class BlackMarkGameManager : MonoBehaviour
         {
             resultText.text =
                 $"{(won ? "Победа" : "Поражение")}\n" +
-                $"{reason}\n" +
-                $"Стиль: {StrategyName(strategy)}";
+                $"{reason}";
         }
 
         if (continueButton != null)
@@ -477,10 +672,12 @@ public class BlackMarkGameManager : MonoBehaviour
 
     private BlackMarkStrategy DetermineStrategy(bool won)
     {
-        if (won && _mistakes <= 1 && _jokerActivations == 0 && _timeLeft >= roundTime * 0.35f)
+        float timeRatio = roundTime <= 0f ? 0f : _timeLeft / roundTime;
+
+        if (won && _mistakes <= 1 && _jokerActivations == 0 && timeRatio >= 0.3f)
             return BlackMarkStrategy.Analysis;
 
-        if (_jokerActivations >= 2 || _falsePairsFound >= 2)
+        if (_jokerActivations >= 2 || _falsePairsFound >= 2 || _mistakes >= 3)
             return BlackMarkStrategy.Revolt;
 
         return BlackMarkStrategy.Obedience;
@@ -530,7 +727,7 @@ public class BlackMarkGameManager : MonoBehaviour
             if (open)
                 card.Open();
             else
-                card.Close();
+                card.ForceCloseFromJoker();
         }
     }
 
@@ -546,6 +743,24 @@ public class BlackMarkGameManager : MonoBehaviour
     {
         if (timerText != null)
             timerText.text = $"Время: {Mathf.CeilToInt(_timeLeft)}";
+    }
+
+    private void SetMainUiVisible(bool visible)
+    {
+        if (timerText != null)
+            timerText.gameObject.SetActive(visible);
+
+        if (livesText != null)
+            livesText.gameObject.SetActive(visible);
+
+        if (hintText != null)
+            hintText.gameObject.SetActive(visible);
+
+        if (targetText != null)
+            targetText.gameObject.SetActive(visible);
+
+        if (statusText != null)
+            statusText.gameObject.SetActive(true);
     }
 
     private ClueType RandomClue()
@@ -571,8 +786,8 @@ public class BlackMarkGameManager : MonoBehaviour
     {
         return clue switch
         {
-            ClueType.BlackMark => "Ищи настоящую Чёрную метку.",
-            ClueType.Mask => "Я запомнила маску.",
+            ClueType.BlackMark => "Среди подделок есть настоящая Чёрная метка.",
+            ClueType.Mask => "Я запомнила маску в толпе.",
             ClueType.Glass => "На столе остался бокал.",
             ClueType.Key => "Ключ был у того, кто знал проход.",
             _ => "Найди настоящую улику."

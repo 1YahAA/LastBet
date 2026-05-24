@@ -21,7 +21,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Roulette.unity
     guid: 195eea7c669f5ba4d995aa3409e00813
   - enabled: 1
-    path: Assets/Scenes/CardGame.unity
+    path: Assets/Scenes/Coctailes.unity
     guid: 6584751df12edd745a80722413b729a8
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: ad94ad9cc8896fa428c00799383845de, type: 2}
