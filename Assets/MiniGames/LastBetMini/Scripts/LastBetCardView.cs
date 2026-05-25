@@ -15,6 +15,8 @@ public class LastBetCardView : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text descriptionText;
 
+    [SerializeField] private GameObject infoBlock;
+
     private LastBetCardData _data;
     private bool _opened;
 
@@ -51,6 +53,9 @@ public class LastBetCardView : MonoBehaviour
         SetActive(jokerFullCardImage, false);
         SetActive(backImage, true);
 
+        if (infoBlock != null)
+            infoBlock.SetActive(false);
+
         SetText(titleText, string.Empty);
         SetText(descriptionText, string.Empty);
     }
@@ -67,10 +72,13 @@ public class LastBetCardView : MonoBehaviour
         SetActive(clueImage, !isJoker);
         SetActive(jokerFullCardImage, isJoker);
 
+        if (infoBlock != null)
+            infoBlock.SetActive(!isJoker);
+
         SetText(titleText, _data != null ? _data.title : string.Empty);
         SetText(descriptionText, _data != null ? _data.cardDescription : string.Empty);
     }
-
+    
     private static void SetActive(Graphic graphic, bool active)
     {
         if (graphic != null)

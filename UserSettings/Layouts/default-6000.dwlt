@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1536
     height: 772.8
   m_ShowMode: 4
-  m_Title: Project
+  m_Title: Scene
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -120,7 +120,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 112}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 99198
+  controlID: 6248
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -172,7 +172,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 112}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 99199
+  controlID: 6249
   draggingID: 0
 --- !u!114 &8
 MonoBehaviour:
@@ -591,7 +591,7 @@ MonoBehaviour:
     m_HSlider: 0
     m_VSlider: 0
     m_IgnoreScrollWheelUntilClicked: 0
-    m_EnableMouseInput: 0
+    m_EnableMouseInput: 1
     m_EnableSliderZoomHorizontal: 0
     m_EnableSliderZoomVertical: 0
     m_UniformScale: 1
@@ -668,86 +668,20 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -117718
-      - m_Data: -114168
-      - m_Data: -107092
-      - m_Data: -105622
-      - m_Data: -98960
-      - m_Data: -97316
-      - m_Data: -95596
-      - m_Data: -91674
-      - m_Data: -87902
-      - m_Data: -87392
-      - m_Data: -85162
-      - m_Data: -85160
-      - m_Data: -80286
-      - m_Data: -78758
-      - m_Data: -78298
-      - m_Data: -74722
-      - m_Data: -74424
-      - m_Data: -70156
-      - m_Data: -68918
-      - m_Data: -63108
-      - m_Data: -62610
-      - m_Data: -52720
-      - m_Data: -51066
-      - m_Data: -46286
-      - m_Data: -41970
-      - m_Data: -33850
-      - m_Data: -31528
-      - m_Data: -24614
-      - m_Data: -21972
-      - m_Data: -12176
-      - m_Data: -12012
-      - m_Data: -11870
-      - m_Data: -1370
-      - m_Data: 46878
-      - m_Data: 46888
-      - m_Data: 52612
-      - m_Data: 52700
-      - m_Data: 52708
-      - m_Data: 52752
-      - m_Data: 52776
-      - m_Data: 52828
-      - m_Data: 52846
-      - m_Data: 52874
-      - m_Data: 52898
-      - m_Data: 52938
-      - m_Data: 52972
-      - m_Data: 53016
-      - m_Data: 53024
-      - m_Data: 57296
-      - m_Data: 57384
-      - m_Data: 57654
-      - m_Data: 57746
-      - m_Data: 58826
-      - m_Data: 58834
-      - m_Data: 58876
-      - m_Data: 58908
-      - m_Data: 58992
-      - m_Data: 59024
-      - m_Data: 59056
-      - m_Data: 59104
-      - m_Data: 59204
-      - m_Data: 59996
-      - m_Data: 60006
-      - m_Data: 60068
-      - m_Data: 60234
-      - m_Data: 60338
-      - m_Data: 60370
-      - m_Data: 60386
-      - m_Data: 60404
-      - m_Data: 60430
-      - m_Data: 62512
-      - m_Data: 62790
-      - m_Data: 62896
-      - m_Data: 64796
-      - m_Data: 64890
-      - m_Data: 64932
-      - m_Data: 64964
-      - m_Data: 65056
-      - m_Data: 65124
-      - m_Data: 65204
+      - m_Data: -45974
+      - m_Data: 54810
+      - m_Data: 54904
+      - m_Data: 54938
+      - m_Data: 54946
+      - m_Data: 54978
+      - m_Data: 55006
+      - m_Data: 55062
+      - m_Data: 55070
+      - m_Data: 55106
+      - m_Data: 55206
+      - m_Data: 55218
+      - m_Data: 55308
+      - m_Data: 55338
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -765,7 +699,7 @@ MonoBehaviour:
         m_OriginalEventType: 11
         m_IsRenamingFilename: 0
         m_TrimLeadingAndTrailingWhitespace: 0
-        m_ClientGUIView: {fileID: 10}
+        m_ClientGUIView: {fileID: 6}
       m_SearchString: 
     m_ExpandedScenes: []
     m_CurrenRootEntityId:
@@ -1285,9 +1219,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 318.55707, y: 384.46237, z: -3.1546237}
+    m_Target: {x: 482.4129, y: 242.37454, z: -3.0932014}
     speed: 2
-    m_Value: {x: 318.55707, y: 384.46237, z: -3.1546237}
+    m_Value: {x: 482.4129, y: 242.37454, z: -3.0932014}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1338,9 +1272,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 322.21536
+    m_Target: 306.76376
     speed: 2
-    m_Value: 322.21536
+    m_Value: 306.76376
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1423,7 +1357,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/MiniGames
+    - Assets/MiniGames/LastBetMini/Scripts
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1433,7 +1367,7 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 16
   m_LastFolders:
-  - Assets/MiniGames
+  - Assets/MiniGames/LastBetMini/Scripts
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\Users\alina\Desktop\univer\vkr\LastBet
   m_LockTracker:
@@ -1442,16 +1376,16 @@ MonoBehaviour:
   m_FolderTreeState:
     scrollPos: {x: 0, y: 191}
     m_SelectedIDs:
-    - m_Data: 47066
+    - m_Data: 55764
     m_LastClickedID:
-      m_Data: 47066
+      m_Data: 55764
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 55644
-    - m_Data: 55646
-    - m_Data: 55648
-    - m_Data: 55650
-    - m_Data: 55652
+    - m_Data: 48812
+    - m_Data: 48814
+    - m_Data: 48816
+    - m_Data: 48818
+    - m_Data: 48820
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1485,11 +1419,11 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 55644
-    - m_Data: 55646
-    - m_Data: 55648
-    - m_Data: 55650
-    - m_Data: 55652
+    - m_Data: 48812
+    - m_Data: 48814
+    - m_Data: 48816
+    - m_Data: 48818
+    - m_Data: 48820
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1518,10 +1452,10 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 47066
+    - m_Data: 55062
     m_LastClickedEntityId:
-      m_Data: 47066
-    m_HadKeyboardFocusLastEvent: 1
+      m_Data: 55062
+    m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs:
     - m_Data: 47544
     - m_Data: 47472
@@ -1639,7 +1573,7 @@ MonoBehaviour:
     m_PrefName: Preview_InspectorPreview
   m_LastInspectedObjectEntityId:
     m_Data: 0
-  m_LastVerticalScrollValue: 928.7999
+  m_LastVerticalScrollValue: 0
   m_GlobalObjectId: 
   m_InspectorMode: 0
   m_LockTracker:
