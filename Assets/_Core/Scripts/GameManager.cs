@@ -1,5 +1,3 @@
-// Главный менеджер игры
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,33 +5,27 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    [Header(" Данные игры ")]
+    [Header("Данные игры")]
     public GameState gameState;
 
-    [Header(" Порядок игровых сцен ")]
+    [Header("Порядок игровых сцен")]
     public string[] sceneOrder =
     {
-        "Scene1_Cabaret", // 0 — Выступление
-        "Scene2_Dressing", // 1 — Гримёрная (коктейль, дверь, автомат)
-        "Scene3_Bar",  // 2 — Бар (встреча с Лео)
-        "Scene4_Casino", // 3 — Казино
-        "Scene5_Backstage", // 4 — Закулисье
-        "Scene6_Office", // 5 — Кабинет Виктора
-        "Scene7_FinalStake" // 6 — Финальная ставка
+        "Scene1_Cabaret",
+        "Scene2_Dressing",
+        "Scene3_Bar",
+        "Scene4_Casino",
+        "Scene5_Backstage",
+        "Scene6_Office",
+        "Scene7_FinalStake"
     };
 
-    // Текущее состояние игры — влияет на то, что можно делать
     public GameplayState CurrentState { get; private set; } = GameplayState.MainMenu;
-
-    // ИНИЦИАЛИЗАЦИЯ
 
     private void Awake()
     {
-        Debug.Log($"[GameManager] Awake | name={name} | scene={gameObject.scene.name} | active={gameObject.activeInHierarchy}", this);
-
         if (Instance != null && Instance != this)
         {
-            Debug.LogWarning("[GameManager] Duplicate destroyed", this);
             Destroy(gameObject);
             return;
         }
@@ -44,29 +36,16 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log($"[GameManager] Start | Instance={Instance}", this);
-        
         if (SaveSystem.HasSave())
-        {
             SaveSystem.Load(gameState);
-            Debug.Log("[GameManager] Сохранение загружено");
-        }
         else
-        {
             gameState.ResetAll();
-        }
-        
-        SceneTransition.Instance.FadeToScene("MainMenu");
-    }
-    
-    private void OnDestroy()
-    {
-        Debug.LogWarning($"[GameManager] OnDestroy | name={name} | scene={gameObject.scene.name}", this);
+
+        SetState(GameplayState.MainMenu);
+        SceneTransition.Instance?.FadeIn();
     }
 
-    // ЗАПУСК/ПРОДОЛЖЕНИЕ ИГРЫ
-
-    // Новая игра — сбросить всё и начать с первой сцены
+ 
     public void StartNewGame()
     {
         gameState.ResetAll();
@@ -74,21 +53,17 @@ public class GameManager : MonoBehaviour
         LoadSceneByIndex(0);
     }
 
-    // Продолжить — загрузить сцену из сохранения
     public void ContinueGame()
     {
         LoadSceneByIndex(gameState.currentSceneIndex);
     }
 
-    // НАВИГАЦИЯ ПО СЦЕНАМ
-
-    // Перейти к следующей сцене по порядку
+ 
     public void LoadNextScene()
     {
         LoadSceneByIndex(gameState.currentSceneIndex + 1);
     }
 
-    // Автоматически сохраняет прогресс
     public void LoadSceneByIndex(int index)
     {
         if (index >= sceneOrder.Length)
@@ -96,24 +71,21 @@ public class GameManager : MonoBehaviour
             LoadEnding();
             return;
         }
+
         gameState.currentSceneIndex = index;
-        SaveSystem.Save(gameState); // автосохранение
+        SaveSystem.Save(gameState);
         SetState(GameplayState.Playing);
         SceneTransition.Instance.FadeToScene(sceneOrder[index]);
     }
 
-    // Вернуться на главное меню (из паузы или концовки)
     public void ReturnToMainMenu()
     {
-        Time.timeScale = 1f; // снять паузу на всякий случай
+        Time.timeScale = 1f;
         SetState(GameplayState.MainMenu);
         SceneTransition.Instance.FadeToScene("MainMenu");
     }
 
-    // МИНИ-ИГРЫ
-
-    // Запустить мини-игру
-    // Запоминает из какой сцены ушли, чтобы вернуться
+ 
     public void LoadMiniGame(string miniGameSceneName, MiniGameType miniGameType)
     {
         gameState.returnSceneName = sceneOrder[gameState.currentSceneIndex];
@@ -122,24 +94,20 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene(miniGameSceneName);
     }
 
-    // Завершить мини-игру и вернуться в сцену
+    public void ReturnFromMiniGame()
+    {
+        SaveSystem.Save(gameState);
+        SetState(GameplayState.Playing);
+        SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
+    }
+
     public void FinishMiniGame(bool won)
     {
-        if (won)
-        {
-            gameState.AddToken(TokenType.Revolt);
-        }
-        else
-        {
-            // Разные жетоны при поражении для разных мини-игр
-            switch (gameState.currentMiniGame)
-            {
-                case MiniGameType.CardGame:
-                    gameState.AddToken(TokenType.Obedience); break;
-                case MiniGameType.Roulette:
-                    gameState.AddToken(TokenType.Analysis); break;
-            }
-        }
+        gameState.AddToken(won ? TokenType.Revolt :
+            gameState.currentMiniGame == MiniGameType.CardGame
+                ? TokenType.Obedience
+                : TokenType.Analysis);
+
         SaveSystem.Save(gameState);
         SetState(GameplayState.Playing);
         SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
@@ -153,21 +121,17 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
     }
 
-    // КОНЦОВКИ
-
-    // Загрузить концовку по накопленным жетонам
+ 
     public void LoadEnding()
     {
         SetState(GameplayState.Ending);
-        SaveSystem.Delete(); // после концовки сохранение сбрасываем
+        SaveSystem.Delete();
         string endingScene = gameState.GetEnding().ToString();
-        Debug.Log($"[GameManager] Концовка: {endingScene} (Б:{gameState.revolt} П:{gameState.obedience} А:{gameState.analysis})");
+        Debug.Log($"[GameManager] Концовка: {endingScene}");
         SceneTransition.Instance.FadeToScene(endingScene);
     }
 
-    // ПАУЗА
 
-    // Поставить паузу
     public void Pause()
     {
         if (CurrentState != GameplayState.Playing &&
@@ -176,7 +140,6 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
     }
 
-    // Снять паузу
     public void Resume()
     {
         if (CurrentState != GameplayState.Paused) return;
@@ -184,14 +147,10 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-    // ДИАЛОГ
 
     public void OnDialogueStart() => SetState(GameplayState.Dialogue);
-
-    // Вызывать когда диалог Yarn Spinner завершился
     public void OnDialogueEnd() => SetState(GameplayState.Playing);
 
-    // Удобные проверки
     public bool IsPlaying => CurrentState == GameplayState.Playing;
     public bool IsPaused => CurrentState == GameplayState.Paused;
     public bool IsInDialogue => CurrentState == GameplayState.Dialogue;
@@ -200,6 +159,5 @@ public class GameManager : MonoBehaviour
     private void SetState(GameplayState newState)
     {
         CurrentState = newState;
-        Debug.Log($"[GameManager] Состояние: {newState}");
     }
 }
