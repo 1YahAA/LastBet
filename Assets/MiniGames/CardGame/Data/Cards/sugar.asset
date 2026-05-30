@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cfc840cb0150dc649aacedc8d6529603, type: 3}
+  m_Name: sugar
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  displayName: "\u0421\u0430\u0445\u0430\u0440"
+  cocktailType: 0
+  points: 1
+  cardSprite: {fileID: 21300000, guid: a41177e817b49204d973c93fee2cb432, type: 3}
+  requiredLeft: 0
+  requiredRight: 0
+  adjacencyBonus: 0
+  effectType: 12
+  effectTarget: 0
+  effectAmount: 1

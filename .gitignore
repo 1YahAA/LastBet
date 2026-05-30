@@ -1,0 +1,61 @@
+# ОСНОВНЫЕ ПАПКИ 
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Bb]uildLogs/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Uu]serSettings/
+[Ee]xports/
+
+# СИСТЕМНЫЕ ФАЙЛЫ
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ФАЙЛЫ РЕДАКТОРОВ КОДА
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.csproj.user
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.pidb.meta
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Rider
+.idea/
+*.sln.iml
+
+# DOTWEEN
+[Aa]ssets/Plugins/Demigiant/DOTween.meta
+[Aa]ssets/Plugins/Demigiant/DOTween/
+[Aa]ssets/Plugins/Demigiant/DOTweenPro/
+[Aa]ssets/Plugins/Demigiant/DOTweenPro.meta
+[Aa]ssets/Plugins/Demigiant/DOTween/Editor/
+[Aa]ssets/Plugins/Demigiant/DOTween/Editor.meta
+
+# ОСТАЛЬНОЕ
+*.tmp
+*.booproj
+*.svd
+*.exe
+*.apk
+*.aab
+*.slnx
+*.dvlt
+
+# Auto-generated Unity files
+/Assets/AssetStoreTools*
+
+# Addressables
+[Aa]ssets/AddressableAssetsData/Generated/
