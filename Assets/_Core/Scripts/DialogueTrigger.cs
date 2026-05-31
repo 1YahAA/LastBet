@@ -1,41 +1,36 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 using Yarn.Unity;
-
-// DialogueTrigger.cs
-//
-// ЧТО ДЕЛАЕТ:
-//   1. Запускает нужный узел диалога Yarn Spinner по имени.
-//   2. Сообщает GameManager о начале/конце диалога.
-//   3. Содержит статические Yarn команды — Yarn вызывает их
-//      без поиска объекта в сцене (работает надёжнее).
-//
-// ПРИКРЕПЛЯТЬ К: объект Dialogue System в каждой игровой сцене.
-// В INSPECTOR: Dialogue Runner → перетащить компонент DialogueRunner.
-//
-// КОМАНДЫ ДЛЯ .YARN ФАЙЛОВ (без указания объекта):
-//   <<add_token Revolt>>         → +1 Бунт
-//   <<add_token Obedience>>      → +1 Послушание
-//   <<add_token Analysis>>       → +1 Анализ
-//   <<drink_cocktail>>           → выпить коктейль
-//   <<refuse_cocktail>>          → отказаться от коктейля
-//   <<load_next_scene>>          → следующая сцена
-//   <<enable_object ИмяОбъекта>> → включить InteractableObject
-//   <<launch_roulette>>          → запустить мини-игру автомат
 
 public class DialogueTrigger : MonoBehaviour
 {
     [Header("Yarn Spinner")]
-    [Tooltip("Компонент DialogueRunner на этом же объекте.")]
     public DialogueRunner dialogueRunner;
+
+    [Header("UI")]
+    [Tooltip("ContinueButton — Raycast выключен когда диалог не идёт")]
+    public Button continueButton;
+
+    [Tooltip("CanvasGroup на Line Presenter — управляем альфой вручную")]
+    public CanvasGroup linePresenterCanvasGroup;
 
     void Start()
     {
         if (dialogueRunner == null)
         {
-            Debug.LogError("[DialogueTrigger] dialogueRunner не назначен в Inspector!");
             return;
         }
+
         dialogueRunner.onDialogueComplete.AddListener(OnDialogueFinished);
+
+        StartCoroutine(HideOnStart());
+    }
+
+    private IEnumerator HideOnStart()
+    {
+        yield return null;
+        SetDialogueVisible(false);
     }
 
     void OnDestroy()
@@ -44,28 +39,51 @@ public class DialogueTrigger : MonoBehaviour
             dialogueRunner.onDialogueComplete.RemoveListener(OnDialogueFinished);
     }
 
-    // ── Запуск диалога ────────────────────────────────
 
     public void StartDialogueNode(string nodeName)
     {
         if (dialogueRunner == null) return;
+
         if (dialogueRunner.IsDialogueRunning)
         {
-            Debug.LogWarning($"[DialogueTrigger] Диалог уже идёт, '{nodeName}' проигнорирован");
             return;
         }
-        GameManager.Instance.OnDialogueStart();
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnDialogueStart();
+
+        SetDialogueVisible(true);
+
         dialogueRunner.StartDialogue(nodeName);
-        Debug.Log($"[DialogueTrigger] Запущен диалог: {nodeName}");
     }
 
     private void OnDialogueFinished()
     {
-        GameManager.Instance.OnDialogueEnd();
-        Debug.Log("[DialogueTrigger] Диалог завершён");
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnDialogueEnd();
+
+        SetDialogueVisible(false);
+
     }
 
-    // ── Yarn команды (static — Yarn не ищет объект в сцене) ──
+
+    private void SetDialogueVisible(bool visible)
+    {
+        if (linePresenterCanvasGroup != null)
+        {
+            linePresenterCanvasGroup.alpha = visible ? 1f : 0f;
+            linePresenterCanvasGroup.interactable = visible;
+            linePresenterCanvasGroup.blocksRaycasts = visible;
+        }
+
+        if (continueButton != null)
+        {
+            continueButton.interactable = visible;
+            var img = continueButton.GetComponent<Image>();
+            if (img != null) img.raycastTarget = visible;
+        }
+    }
+
 
     [YarnCommand("add_token")]
     public static void YarnAddToken(string tokenName)
@@ -73,7 +91,7 @@ public class DialogueTrigger : MonoBehaviour
         if (System.Enum.TryParse<TokenType>(tokenName, out TokenType tokenType))
             GameManager.Instance.gameState.AddToken(tokenType);
         else
-            Debug.LogError($"[DialogueTrigger] Неизвестный жетон: '{tokenName}'. Используй: Revolt, Obedience, Analysis");
+            Debug.LogError($"[DialogueTrigger] Неизвестный жетон: '{tokenName}'");
     }
 
     [YarnCommand("drink_cocktail")]
@@ -98,7 +116,7 @@ public class DialogueTrigger : MonoBehaviour
     public static void YarnEnableObject(string objectName)
     {
         var obj = GameObject.Find(objectName);
-        if (obj == null) { Debug.LogError($"[DialogueTrigger] Объект '{objectName}' не найден"); return; }
+        if (obj == null) { Debug.LogError($"[DialogueTrigger] '{objectName}' не найден"); return; }
         var interactable = obj.GetComponent<InteractableObject>();
         if (interactable != null) interactable.Enable(true);
         else Debug.LogWarning($"[DialogueTrigger] На '{objectName}' нет InteractableObject");

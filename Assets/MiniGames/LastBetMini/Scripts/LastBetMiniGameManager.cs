@@ -1,18 +1,18 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+// Главный сценарный координатор мини-игры «Последняя ставка»
 public class LastBetMiniGameManager : MonoBehaviour
 {
     [Header("Rules")]
     [SerializeField] private int cardsOnTable = 6;
     [SerializeField] private int suspicionLimit = 5;
     [SerializeField] private int minInformationToChoose = 2;
-    [SerializeField] private float roundTime = 75f;
-    [SerializeField] private bool startOnAwake = true;
+    [SerializeField] private float roundTime = 180f;
+    [SerializeField] private bool startOnAwake = false;
+    [SerializeField] private bool showRulesBeforeStart = true;
 
     [Header("Cards")]
     [SerializeField] private LastBetCardView cardPrefab;
@@ -26,6 +26,7 @@ public class LastBetMiniGameManager : MonoBehaviour
     [Header("Evidence Panel")]
     [SerializeField] private Transform evidenceTable;
     [SerializeField] private LastBetClueSlotView clueSlotPrefab;
+    [SerializeField] private LastBetEvidencePanel evidencePanel;
 
     [Header("Buttons")]
     [SerializeField] private Button openCardButton;
@@ -35,6 +36,7 @@ public class LastBetMiniGameManager : MonoBehaviour
     [SerializeField] private LastBetUIButtonSpriteState takeInfoButtonSpriteState;
 
     [Header("Suspects")]
+    [SerializeField] private LastBetSuspectPanel suspectPanelController;
     [SerializeField] private GameObject suspectPanel;
     [SerializeField] private LastBetChoiceButton helgaChoice;
     [SerializeField] private LastBetChoiceButton victorChoice;
@@ -49,6 +51,13 @@ public class LastBetMiniGameManager : MonoBehaviour
     [SerializeField] private TMP_Text resultMainText;
     [SerializeField] private TMP_Text resultInfoText;
 
+    [Header("Intro Rules")]
+    [SerializeField] private LastBetRulesPanel rulesPanelController;
+    [SerializeField] private GameObject rulesPanel;
+    [SerializeField] private Button rulesStartButton;
+    [SerializeField] private TMP_Text rulesTitleText;
+    [SerializeField] private TMP_Text rulesBodyText;
+
     [Header("Result")]
     [SerializeField] private GameObject resultPanel;
 
@@ -61,93 +70,67 @@ public class LastBetMiniGameManager : MonoBehaviour
     [SerializeField] private bool addStoryCluesToGameState = true;
     [SerializeField] private bool finishThroughGameManager = true;
 
-    private readonly List<LastBetCardData> _deck = new List<LastBetCardData>();
+    private readonly LastBetRoundModel _round = new LastBetRoundModel();
     private readonly List<LastBetCardView> _cardViews = new List<LastBetCardView>();
-    private readonly List<LastBetStoryClue> _collectedClues = new List<LastBetStoryClue>();
     private readonly List<Image> _suspicionCircles = new List<Image>();
 
     private int _nextCardIndex;
-    private int _information;
-    private int _suspicion;
-    private float _timeLeft;
-    private bool _roundActive;
-    private bool _choiceOpened;
-    private LastBetSuspect _selectedSuspect = LastBetSuspect.None;
 
     private void Awake()
     {
         AutoBindSceneReferences();
+        ConfigureSubControllers();
         WireButtons();
-        BindChoiceButtons();
         CacheSuspicionCircles();
-
-        if (startOnAwake)
-            StartRound();
+        PrepareInitialUi();
     }
 
     private void Update()
     {
-        if (!_roundActive || _choiceOpened || roundTime <= 0f)
+        if (!_round.Active || _round.ChoiceOpened || roundTime <= 0f)
             return;
 
-        _timeLeft -= Time.deltaTime;
-        if (_timeLeft <= 0f)
-        {
-            _timeLeft = 0f;
-            OpenChoicePanel();
-        }
+        _round.Tick(Time.deltaTime);
+
+        if (_round.TimeLeft <= 0f)
+            OpenChoicePanel("Время вышло. Теперь Эвелин должна выбрать версию по тем сведениям, которые уже есть.");
 
         RefreshTopUi();
+    }
+
+    private void PrepareInitialUi()
+    {
+        suspectPanelController.Hide();
+        LastBetUiUtility.SetPanelVisible(resultPanel, false);
+
+        if (showRulesBeforeStart && rulesPanelController.Exists)
+            rulesPanelController.Show(minInformationToChoose, suspicionLimit, StartRound);
+        else if (startOnAwake || !showRulesBeforeStart)
+            StartRound();
     }
 
     public void StartRound()
     {
-        _information = 0;
-        _suspicion = 0;
+        _round.Start(roundTime);
         _nextCardIndex = 0;
-        _selectedSuspect = LastBetSuspect.None;
-        _choiceOpened = false;
-        _roundActive = true;
-        _timeLeft = roundTime;
 
-        ClearChildren(cardParent);
-        ClearChildren(evidenceTable);
+        LastBetUiUtility.ClearChildren(cardParent);
+        evidencePanel.Clear();
         _cardViews.Clear();
-        _collectedClues.Clear();
 
-        if (resultPanel != null)
-            resultPanel.SetActive(false);
+        rulesPanelController.Hide();
+        suspectPanelController.Hide();
+        LastBetUiUtility.SetPanelVisible(resultPanel, false);
 
-        if (suspectPanel != null)
-            suspectPanel.SetActive(false);
+        BuildCardsOnTable(LastBetDeckService.BuildDeck(deckTemplates));
 
-        BuildDeck();
-        BuildCardsOnTable();
-
-        SetCroupierLine("Откройте карту. Сведения появятся в панели справа.");
-        SetInfoLine("Откройте карту, чтобы получить первую улику.");
+        SetCroupierLine("Откройте карты. Улики появятся справа. Когда сведений будет достаточно, заберите сведения и выберите версию.");
 
         RefreshTopUi();
         RefreshButtonState();
-        RefreshChoiceSelection();
     }
 
-    private void BuildDeck()
-    {
-        _deck.Clear();
-
-        if (deckTemplates != null && deckTemplates.Count > 0)
-        {
-            _deck.AddRange(deckTemplates.Where(card => card != null));
-        }
-
-        if (_deck.Count == 0)
-            _deck.AddRange(CreateFallbackDeck());
-
-        Shuffle(_deck);
-    }
-
-    private void BuildCardsOnTable()
+    private void BuildCardsOnTable(List<LastBetCardData> deck)
     {
         if (cardPrefab == null || cardParent == null)
         {
@@ -155,249 +138,165 @@ public class LastBetMiniGameManager : MonoBehaviour
             return;
         }
 
-        int count = Mathf.Min(cardsOnTable, _deck.Count);
-
+        int count = Mathf.Min(cardsOnTable, deck.Count);
         for (int i = 0; i < count; i++)
         {
             LastBetCardView view = Instantiate(cardPrefab, cardParent);
             view.gameObject.SetActive(true);
-            view.Setup(_deck[i], cardBaseSprite, cardBackSprite, cardFrameSprite, jokerFullCardSprite);
+            view.Setup(deck[i], cardBaseSprite, cardBackSprite, cardFrameSprite, jokerFullCardSprite);
             _cardViews.Add(view);
         }
     }
 
     private void OpenNextCard()
     {
-        if (!_roundActive || _choiceOpened)
+        if (!_round.Active || _round.ChoiceOpened)
             return;
 
         if (_nextCardIndex >= _cardViews.Count)
         {
-            SetInfoLine("Все карты на столе открыты. Можно забрать сведения.");
+            SetInfoLine("Все карты на столе открыты. Теперь нужно забрать сведения и выбрать версию.");
             RefreshButtonState();
             return;
         }
 
-        LastBetCardView view = _cardViews[_nextCardIndex];
-        _nextCardIndex++;
-
+        LastBetCardView view = _cardViews[_nextCardIndex++];
         if (view == null || view.Data == null)
         {
             RefreshButtonState();
             return;
         }
 
-        LastBetCardData data = view.Data;
         view.ShowOpened();
-
-        ApplyCard(data);
+        ApplyCard(view.Data);
         RefreshTopUi();
         RefreshButtonState();
     }
 
     private void ApplyCard(LastBetCardData data)
     {
-        if (data == null)
-            return;
+        LastBetCardApplyResult result = _round.ApplyCard(data, suspicionLimit);
 
-        _information += Mathf.Max(0, data.informationValue);
-        _suspicion += Mathf.Max(0, data.suspicionValue);
-        _suspicion = Mathf.Clamp(_suspicion, 0, suspicionLimit);
-
-        if (data.IsJoker)
+        if (result.IsJoker)
         {
-            SetInfoLine("Джокер вмешался в расклад. Эта карта не добавлена к уликам.");
-            SetCroupierLine(string.IsNullOrWhiteSpace(data.croupierLine)
-                ? "Джокер любит появляться там, где выводы становятся слишком удобными."
-                : data.croupierLine);
-            return;
+            SetInfoLine("Джокер вмешался в расклад. Он повышает подозрение, но не добавляет улику.");
+            SetCroupierLine(string.IsNullOrWhiteSpace(data.croupierLine) ? "Джокер делает выводы слишком удобными." : data.croupierLine);
+        }
+        else
+        {
+            if (result.AddedEvidence)
+                evidencePanel.AddEvidence(data);
+
+            SetInfoLine($"Собрана улика: {data.title}. Сведения: {_round.Information}/{minInformationToChoose}. Подозрение: {_round.Suspicion}/{suspicionLimit}.");
+            SetCroupierLine(data.croupierLine);
         }
 
-        if (data.AddsEvidence)
-        {
-            AddEvidenceSlot(data);
-            if (!_collectedClues.Contains(data.storyClue))
-                _collectedClues.Add(data.storyClue);
-        }
-
-        SetInfoLine($"Собрана улика: {data.title}");
-        SetCroupierLine(data.croupierLine);
+        if (result.OpenChoiceBecauseSuspicionLimit)
+            OpenChoicePanel("Подозрение достигло предела. Эвелин больше не может тянуть время.");
     }
 
-    private void AddEvidenceSlot(LastBetCardData data)
+    private void TryTakeInformation()
     {
-        if (data == null)
+        if (!_round.Active || _round.ChoiceOpened)
             return;
 
-        Transform parent = GetEvidenceContentParent();
-        if (parent == null)
+        if (!_round.HasEnoughInformation(minInformationToChoose))
         {
-            Debug.LogWarning("[LastBet] Evidence Table is not assigned, clue slot was not created.");
+            SetInfoLine($"Сведений пока мало: {_round.Information}/{minInformationToChoose}. Откройте ещё карту или дождитесь вынужденного выбора.");
+            SetCroupierLine("Одна деталь редко делает версию. Вторая уже начинает показывать маршрут.");
             return;
         }
 
-        if (clueSlotPrefab == null)
-        {
-            Debug.LogWarning("[LastBet] Clue Slot Prefab is not assigned, clue slot was not created.");
-            return;
-        }
-
-        LastBetClueSlotView slot = Instantiate(clueSlotPrefab, parent);
-        slot.gameObject.SetActive(true);
-
-        string evidenceTitle = MakeReadableTitle(data.title);
-        slot.Setup(data.clueSprite, evidenceTitle, data.evidencePanelDescription);
-
-        LayoutRebuilder.ForceRebuildLayoutImmediate(parent as RectTransform);
+        OpenChoicePanel("Сведения собраны. Теперь выберите версию Эвелин.");
     }
 
-    private Transform GetEvidenceContentParent()
+    private void OpenChoicePanel(string reason)
     {
-        if (evidenceTable != null)
-            return evidenceTable;
-
-        GameObject byName = GameObject.Find("EvidenceTable");
-        if (byName != null)
-            return byName.transform;
-
-        GameObject content = GameObject.Find("Content");
-        if (content != null)
-            return content.transform;
-
-        return null;
-    }
-
-    private void OpenChoicePanel()
-    {
-        if (_choiceOpened)
+        if (_round.ChoiceOpened)
             return;
 
-        _choiceOpened = true;
-        _roundActive = false;
-
-        if (suspectPanel != null)
-            suspectPanel.SetActive(true);
-
-        SetInfoLine("Выберите версию Эвелин.");
-        SetCroupierLine("Последняя ставка сделана. Теперь останется только версия.");
-
+        _round.OpenChoice();
+        suspectPanelController.Show();
+        SetInfoLine(reason);
+        SetCroupierLine("Последняя ставка сделана. Это не ответ суда, а версия, с которой Эвелин пойдёт дальше.");
         RefreshButtonState();
-        RefreshChoiceSelection();
     }
 
     private void SelectSuspect(LastBetSuspect suspect)
     {
-        _selectedSuspect = suspect;
-        RefreshChoiceSelection();
+        _round.SelectSuspect(suspect);
+        suspectPanelController.SetSelected(suspect);
         ShowResult();
     }
 
     private void ShowResult()
     {
-        if (resultPanel != null)
-            resultPanel.SetActive(true);
+        bool useful = LastBetResultResolver.IsInformationUseful(_round.Information, minInformationToChoose, _round.Suspicion, suspicionLimit);
+        LastBetStrategyToken token = LastBetResultResolver.ResolveToken(_round.SelectedSuspect, _round.Information, _round.Suspicion, suspicionLimit);
 
-        LastBetStrategyToken token = ResolveStrategyToken();
-        bool useful = ResolveUsefulOutcome();
+        LastBetUiUtility.SetPanelVisible(resultPanel, true);
+        if (resultPanel != null)
+            resultPanel.transform.SetAsLastSibling();
 
         if (resultMainText != null)
-            resultMainText.text = useful ? "СВЕДЕНИЯ СОХРАНЕНЫ" : "СЛЕДЫ ПРОТИВОРЕЧИВЫ";
+            resultMainText.text = LastBetResultResolver.BuildTitle(useful);
 
         if (resultInfoText != null)
-            resultInfoText.text = BuildResultText(token, useful);
+            resultInfoText.text = LastBetResultResolver.BuildBody(_round.SelectedSuspect, token, useful, _round.CollectedClues);
 
-        SetInfoLine("Раунд завершён.");
+        SetInfoLine("Раунд завершён. Версия сохранена как часть расследования.");
         SetCroupierLine("Карты сказали достаточно. Но не всё.");
-
         RefreshButtonState();
-    }
-
-    private bool ResolveUsefulOutcome()
-    {
-        return _information >= minInformationToChoose && _suspicion < suspicionLimit;
-    }
-
-    private LastBetStrategyToken ResolveStrategyToken()
-    {
-        if (_selectedSuspect == LastBetSuspect.Helga)
-            return LastBetStrategyToken.Revolt;
-
-        if (_selectedSuspect == LastBetSuspect.Victor)
-            return LastBetStrategyToken.Obedience;
-
-        if (_information >= 4 && _suspicion <= 3)
-            return LastBetStrategyToken.Analysis;
-
-        return LastBetStrategyToken.Analysis;
-    }
-
-    private string BuildResultText(LastBetStrategyToken token, bool useful)
-    {
-        if (useful)
-        {
-            return "Эвелин сохранила часть сведений. Несколько деталей складываются в общий маршрут, но ни одна карта не даёт полной уверенности.";
-        }
-
-        return "Раунд оставил слишком много шума. Часть сведений можно сохранить, но доверять всей версии опасно.";
     }
 
     private void ContinueAfterResult()
     {
-        LastBetStrategyToken token = ResolveStrategyToken();
-        bool useful = ResolveUsefulOutcome();
+        bool useful = LastBetResultResolver.IsInformationUseful(_round.Information, minInformationToChoose, _round.Suspicion, suspicionLimit);
+        LastBetStrategyToken token = LastBetResultResolver.ResolveToken(_round.SelectedSuspect, _round.Information, _round.Suspicion, suspicionLimit);
 
-        // Здесь оставлены безопасные попытки интеграции. Если в проекте нет таких методов,
-        // код просто продолжит работу без ошибки компиляции, потому что используется SendMessage.
-        if (finishThroughGameManager && GameManagerExists())
+        GameObject manager = GameObject.Find("GameManager");
+        if (finishThroughGameManager && manager != null)
         {
-            GameObject manager = GameObject.Find("GameManager");
-            if (manager != null)
+            if (addStrategyTokenBeforeFinish)
+                manager.SendMessage("AddToken", token.ToString(), SendMessageOptions.DontRequireReceiver);
+
+            if (addStoryCluesToGameState)
             {
-                if (addStrategyTokenBeforeFinish)
-                    manager.SendMessage("AddToken", token.ToString(), SendMessageOptions.DontRequireReceiver);
-
-                if (addStoryCluesToGameState)
-                {
-                    foreach (LastBetStoryClue clue in _collectedClues)
-                        manager.SendMessage("AddStoryClue", clue.ToString(), SendMessageOptions.DontRequireReceiver);
-                }
-
-                manager.SendMessage("FinishMiniGame", useful, SendMessageOptions.DontRequireReceiver);
-                return;
+                foreach (LastBetStoryClue clue in _round.CollectedClues)
+                    manager.SendMessage("AddStoryClue", clue.ToString(), SendMessageOptions.DontRequireReceiver);
             }
+
+            manager.SendMessage("FinishMiniGame", useful, SendMessageOptions.DontRequireReceiver);
+            return;
         }
 
-        Debug.Log($"[LastBet] Finished. useful={useful}, token={token}, clues={string.Join(", ", _collectedClues)}");
-    }
-
-    private bool GameManagerExists()
-    {
-        return GameObject.Find("GameManager") != null;
+        Debug.Log($"[LastBet] Finished. useful={useful}, token={token}, clues={string.Join(", ", _round.CollectedClues)}");
     }
 
     private void RefreshTopUi()
     {
         if (timerText != null)
-            timerText.text = roundTime > 0f ? Mathf.CeilToInt(_timeLeft).ToString() : "--";
+            timerText.text = roundTime > 0f ? Mathf.CeilToInt(_round.TimeLeft).ToString() : "--";
 
         if (suspicionText != null)
-            suspicionText.text = $"{_suspicion}/{suspicionLimit}";
+            suspicionText.text = $"{_round.Suspicion}/{suspicionLimit}";
 
         RefreshSuspicionCircles();
     }
 
     private void RefreshButtonState()
     {
-        bool canOpen = _roundActive && !_choiceOpened && _nextCardIndex < _cardViews.Count;
-        bool canTakeInfo = !_choiceOpened && _information >= minInformationToChoose;
-        bool warning = _suspicion >= Mathf.Max(1, suspicionLimit - 1);
+        bool canOpen = _round.Active && !_round.ChoiceOpened && _nextCardIndex < _cardViews.Count;
+        bool canTakeInfo = _round.Active && !_round.ChoiceOpened;
+        bool warning = _round.Suspicion >= Mathf.Max(1, suspicionLimit - 1);
+        bool hasEnoughInfo = _round.HasEnoughInformation(minInformationToChoose);
 
         if (openCardButton != null)
             openCardButton.interactable = canOpen;
 
         if (takeInfoButton != null)
         {
-            takeInfoButton.gameObject.SetActive(!_choiceOpened);
+            takeInfoButton.gameObject.SetActive(!_round.ChoiceOpened);
             takeInfoButton.interactable = canTakeInfo;
         }
 
@@ -407,41 +306,15 @@ public class LastBetMiniGameManager : MonoBehaviour
         if (takeInfoButtonSpriteState != null)
         {
             takeInfoButtonSpriteState.SetInteractableVisual(canTakeInfo);
-            takeInfoButtonSpriteState.SetWarning(warning && canTakeInfo);
-        }
-    }
-
-    private void RefreshChoiceSelection()
-    {
-        if (helgaChoice != null) helgaChoice.SetSelected(_selectedSuspect == LastBetSuspect.Helga);
-        if (victorChoice != null) victorChoice.SetSelected(_selectedSuspect == LastBetSuspect.Victor);
-        if (marieChoice != null) marieChoice.SetSelected(_selectedSuspect == LastBetSuspect.Marie);
-    }
-
-    private void RefreshSuspicionCircles()
-    {
-        if (_suspicionCircles.Count == 0)
-            CacheSuspicionCircles();
-
-        for (int i = 0; i < _suspicionCircles.Count; i++)
-        {
-            Image circle = _suspicionCircles[i];
-            if (circle == null)
-                continue;
-
-            Sprite sprite = i < _suspicion ? suspicionFilledSprite : suspicionEmptySprite;
-            if (sprite != null)
-                circle.sprite = sprite;
-
-            circle.preserveAspect = true;
+            takeInfoButtonSpriteState.SetWarning((warning || hasEnoughInfo) && canTakeInfo);
         }
     }
 
     private void WireButtons()
     {
-        AutoAddButton(ref openCardButton, "OpenCardButton");
-        AutoAddButton(ref takeInfoButton, "TakeInfoCardButton");
-        AutoAddButton(ref continueButton, "ContinueButton");
+        openCardButton = openCardButton != null ? openCardButton : LastBetSceneLookup.FindButton("OpenCardButton");
+        takeInfoButton = takeInfoButton != null ? takeInfoButton : LastBetSceneLookup.FindButton("TakeInfoCardButton");
+        continueButton = continueButton != null ? continueButton : LastBetSceneLookup.FindButton("ContinueButton");
 
         if (openCardButton != null)
         {
@@ -452,7 +325,7 @@ public class LastBetMiniGameManager : MonoBehaviour
         if (takeInfoButton != null)
         {
             takeInfoButton.onClick.RemoveAllListeners();
-            takeInfoButton.onClick.AddListener(OpenChoicePanel);
+            takeInfoButton.onClick.AddListener(TryTakeInformation);
         }
 
         if (continueButton != null)
@@ -462,77 +335,44 @@ public class LastBetMiniGameManager : MonoBehaviour
         }
     }
 
-    private void BindChoiceButtons()
+    private void ConfigureSubControllers()
     {
-        AutoBindChoice(ref helgaChoice, "SuspectedHelga", LastBetSuspect.Helga);
-        AutoBindChoice(ref victorChoice, "SuspectedVictor", LastBetSuspect.Victor);
-        AutoBindChoice(ref marieChoice, "SuspectedMari", LastBetSuspect.Marie);
-    }
+        if (evidencePanel == null)
+            evidencePanel = gameObject.AddComponent<LastBetEvidencePanel>();
+        evidencePanel.Configure(evidenceTable, clueSlotPrefab);
 
-    private void AutoBindChoice(ref LastBetChoiceButton choice, string objectName, LastBetSuspect suspect)
-    {
-        GameObject go = choice != null ? choice.gameObject : GameObject.Find(objectName);
-        if (go == null)
-            return;
+        if (suspectPanelController == null)
+            suspectPanelController = gameObject.AddComponent<LastBetSuspectPanel>();
+        suspectPanelController.Configure(suspectPanel, helgaChoice, victorChoice, marieChoice);
+        suspectPanelController.Initialize(SelectSuspect);
 
-        if (choice == null)
-            choice = go.GetComponent<LastBetChoiceButton>();
-
-        if (choice == null)
-            choice = go.AddComponent<LastBetChoiceButton>();
-
-        choice.BindDefaults();
-        choice.SetSelected(false);
-
-        Button button = go.GetComponent<Button>();
-        if (button == null)
-            button = go.AddComponent<Button>();
-
-        button.transition = Selectable.Transition.None;
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(() => SelectSuspect(suspect));
-    }
-
-    private void AutoAddButton(ref Button button, string objectName)
-    {
-        GameObject go = button != null ? button.gameObject : GameObject.Find(objectName);
-        if (go == null)
-            return;
-
-        if (button == null)
-            button = go.GetComponent<Button>();
-
-        if (button == null)
-            button = go.AddComponent<Button>();
+        if (rulesPanelController == null)
+            rulesPanelController = gameObject.AddComponent<LastBetRulesPanel>();
+        rulesPanelController.Configure(rulesPanel, rulesStartButton, rulesTitleText, rulesBodyText);
     }
 
     private void AutoBindSceneReferences()
     {
-        if (cardParent == null) cardParent = FindTransform("CardParent");
-        if (evidenceTable == null) evidenceTable = FindTransform("EvidenceTable");
+        if (cardParent == null) cardParent = LastBetSceneLookup.FindTransform("CardParent");
+        if (evidenceTable == null) evidenceTable = LastBetSceneLookup.FindTransform("EvidenceTable");
+        if (suspectPanel == null) suspectPanel = LastBetSceneLookup.FindObjectIncludeInactive("SuspectPanel");
+        if (resultPanel == null) resultPanel = LastBetSceneLookup.FindObjectIncludeInactive("ResultPanel");
+        if (rulesPanel == null) rulesPanel = LastBetSceneLookup.FindObjectIncludeInactive("RulesPanel");
 
-        if (suspectPanel == null) suspectPanel = FindObject("SuspectPanel");
-        if (resultPanel == null) resultPanel = FindObject("ResultPanel");
-
-        if (timerText == null) timerText = FindText("TimerText");
-        if (infoText == null) infoText = FindText("InfoText");
-        if (suspicionText == null) suspicionText = FindText("SuspicionText");
-        if (croupierText == null) croupierText = FindText("CrupieText");
-        if (knownEvidenceText == null) knownEvidenceText = FindText("KnownEvidenceText");
-        if (resultMainText == null) resultMainText = FindText("ResultMainText");
-        if (resultInfoText == null) resultInfoText = FindText("ResultInfoText");
+        if (timerText == null) timerText = LastBetSceneLookup.FindText("TimerText");
+        if (infoText == null) infoText = LastBetSceneLookup.FindText("InfoText");
+        if (suspicionText == null) suspicionText = LastBetSceneLookup.FindText("SuspicionText");
+        if (croupierText == null) croupierText = LastBetSceneLookup.FindText("CrupieText");
+        if (knownEvidenceText == null) knownEvidenceText = LastBetSceneLookup.FindText("KnownEvidenceText");
+        if (resultMainText == null) resultMainText = LastBetSceneLookup.FindText("ResultMainText");
+        if (resultInfoText == null) resultInfoText = LastBetSceneLookup.FindText("ResultInfoText");
+        if (rulesTitleText == null) rulesTitleText = LastBetSceneLookup.FindText("RulesTitleText");
+        if (rulesBodyText == null) rulesBodyText = LastBetSceneLookup.FindText("RulesBodyText");
 
         if (openCardButtonSpriteState == null)
-        {
-            GameObject go = FindObject("OpenCardButton");
-            if (go != null) openCardButtonSpriteState = go.GetComponent<LastBetUIButtonSpriteState>();
-        }
-
+            openCardButtonSpriteState = LastBetSceneLookup.FindObjectIncludeInactive("OpenCardButton")?.GetComponent<LastBetUIButtonSpriteState>();
         if (takeInfoButtonSpriteState == null)
-        {
-            GameObject go = FindObject("TakeInfoCardButton");
-            if (go != null) takeInfoButtonSpriteState = go.GetComponent<LastBetUIButtonSpriteState>();
-        }
+            takeInfoButtonSpriteState = LastBetSceneLookup.FindObjectIncludeInactive("TakeInfoCardButton")?.GetComponent<LastBetUIButtonSpriteState>();
 
         if (knownEvidenceText != null)
             knownEvidenceText.text = "Собранные улики";
@@ -541,39 +381,31 @@ public class LastBetMiniGameManager : MonoBehaviour
     private void CacheSuspicionCircles()
     {
         _suspicionCircles.Clear();
-
-        Transform root = FindTransform("SuspicionCircles");
+        Transform root = LastBetSceneLookup.FindTransform("SuspicionCircles");
         if (root == null)
             return;
 
         for (int i = 1; i <= 5; i++)
         {
-            Transform child = root.Find($"Circle_{i}");
-            if (child == null)
-                continue;
-
-            Image image = child.GetComponent<Image>();
+            Image image = root.Find($"Circle_{i}")?.GetComponent<Image>();
             if (image != null)
                 _suspicionCircles.Add(image);
         }
     }
 
-    private static GameObject FindObject(string name)
+    private void RefreshSuspicionCircles()
     {
-        GameObject direct = GameObject.Find(name);
-        return direct;
-    }
+        for (int i = 0; i < _suspicionCircles.Count; i++)
+        {
+            Image circle = _suspicionCircles[i];
+            if (circle == null)
+                continue;
 
-    private static Transform FindTransform(string name)
-    {
-        GameObject go = GameObject.Find(name);
-        return go != null ? go.transform : null;
-    }
-
-    private static TMP_Text FindText(string name)
-    {
-        GameObject go = GameObject.Find(name);
-        return go != null ? go.GetComponent<TMP_Text>() : null;
+            Sprite sprite = i < _round.Suspicion ? suspicionFilledSprite : suspicionEmptySprite;
+            if (sprite != null)
+                circle.sprite = sprite;
+            circle.preserveAspect = true;
+        }
     }
 
     private void SetInfoLine(string value)
@@ -585,154 +417,6 @@ public class LastBetMiniGameManager : MonoBehaviour
     private void SetCroupierLine(string value)
     {
         if (croupierText != null)
-            croupierText.text = string.IsNullOrWhiteSpace(value)
-                ? "Крупье молчит."
-                : value;
-    }
-
-    private static void ClearChildren(Transform parent)
-    {
-        if (parent == null)
-            return;
-
-        for (int i = parent.childCount - 1; i >= 0; i--)
-            Destroy(parent.GetChild(i).gameObject);
-    }
-
-    private static void Shuffle<T>(IList<T> list)
-    {
-        if (list == null)
-            return;
-
-        for (int i = 0; i < list.Count; i++)
-        {
-            int j = UnityEngine.Random.Range(i, list.Count);
-            (list[i], list[j]) = (list[j], list[i]);
-        }
-    }
-
-    private static string MakeReadableTitle(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        return value.Trim().ToLowerInvariant() switch
-        {
-            "зажигалка" => "Зажигалка",
-            "vip-билет" => "VIP-билет",
-            "записка" => "Записка",
-            "маска" => "Маска",
-            "завязка" => "Завязка маски",
-            "ставки" => "Порядок ставок",
-            "пометка" => "Служебная пометка",
-            "коридор" => "Закрытый коридор",
-            _ => value
-        };
-    }
-
-    private static IEnumerable<LastBetCardData> CreateFallbackDeck()
-    {
-        return new[]
-        {
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.StableClue,
-                storyClue = LastBetStoryClue.LighterAtServiceDoor,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "ЗАЖИГАЛКА",
-                cardDescription = "Чужая вещь у служебного входа.",
-                evidencePanelDescription = "Тяжёлая металлическая зажигалка с потёртой гравировкой. Её нашли возле двери, которой пользуется персонал кабаре.",
-                croupierLine = "Интересная находка. Но вещь у двери ещё не говорит, кто её оставил."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.StableClue,
-                storyClue = LastBetStoryClue.VipBillWithoutNumber,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "VIP-БИЛЕТ",
-                cardDescription = "След закрытой ложи.",
-                evidencePanelDescription = "Билет из закрытой ложи второго этажа. На обороте осталась едва заметная пометка карандашом.",
-                croupierLine = "Закрытая ложа многое скрывает. Иногда слишком многое."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.StableClue,
-                storyClue = LastBetStoryClue.RewrittenLetter,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "ЗАПИСКА",
-                cardDescription = "Фраза без подписи.",
-                evidencePanelDescription = "«После последней ставки дверь будет открыта». Записка сложена слишком аккуратно, будто её подготовили заранее.",
-                croupierLine = "Бумага терпит любые слова. Подпись обычно говорит больше."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.FalseTrail,
-                storyClue = LastBetStoryClue.MaskWithPowder,
-                informationValue = 1,
-                suspicionValue = 1,
-                title = "МАСКА",
-                cardDescription = "Снята слишком поспешно.",
-                evidencePanelDescription = "Чёрная сценическая маска с надорванной лентой. На внутренней стороне остался след грима.",
-                croupierLine = "Маска слишком заметна. Иногда такие следы оставляют специально."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.Shield,
-                storyClue = LastBetStoryClue.HelgaWarning,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "ЗАВЯЗКА",
-                cardDescription = "След ткани и грима.",
-                evidencePanelDescription = "Тонкая лента пропитана запахом духов и театрального грима. Похожую ткань используют за сценой.",
-                croupierLine = "За сценой всё пахнет гримом. Но не каждый след ведёт к врагу."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.Doubt,
-                storyClue = LastBetStoryClue.BettingOrderChanged,
-                informationValue = 1,
-                suspicionValue = 1,
-                title = "СТАВКИ",
-                cardDescription = "Последовательность изменена.",
-                evidencePanelDescription = "Кто-то исправил порядок карточных ставок прямо перед началом игры. Исправления сделаны уверенной рукой.",
-                croupierLine = "В ставках нет случайностей. Есть только те, кто умеет ждать."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.StableClue,
-                storyClue = LastBetStoryClue.ForgedEvidence,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "ПОМЕТКА",
-                cardDescription = "Знак персонала.",
-                evidencePanelDescription = "Небольшой знак на полях документа совпадает с внутренними отметками персонала кабаре.",
-                croupierLine = "Персонал всегда знает больше гостей. Но не всегда говорит правду."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.StableClue,
-                storyClue = LastBetStoryClue.SecretVipCorridor,
-                informationValue = 1,
-                suspicionValue = 0,
-                title = "КОРИДОР",
-                cardDescription = "Маршрут за кулисы.",
-                evidencePanelDescription = "На схеме отмечен служебный проход, ведущий мимо сцены и VIP-комнат. Обычные гости о нём не знают.",
-                croupierLine = "Двери для гостей и двери для своих редко ведут в одно место."
-            },
-            new LastBetCardData
-            {
-                cardType = LastBetCardType.Joker,
-                storyClue = LastBetStoryClue.JokerManipulatedTable,
-                informationValue = 0,
-                suspicionValue = 1,
-                title = "ДЖОКЕР",
-                cardDescription = "Карта вмешательства.",
-                evidencePanelDescription = string.Empty,
-                croupierLine = "Джокер любит появляться там, где выводы становятся слишком удобными."
-            }
-        };
+            croupierText.text = string.IsNullOrWhiteSpace(value) ? "Крупье молчит." : value;
     }
 }

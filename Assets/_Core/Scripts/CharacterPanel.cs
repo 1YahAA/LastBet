@@ -42,24 +42,20 @@ public class CharacterPanel : MonoBehaviour
     [Tooltip("Данные 4 персонажей: Viktor, Leo, Helga, Mari")]
     public CharacterData[] characters;
 
-    // Callback — вызывается когда панель закрыта
     private System.Action _onClose;
 
     void Start()
     {
-        // Панель выключена по умолчанию
         gameObject.SetActive(false);
 
         if (closeButton != null)
             closeButton.onClick.AddListener(Hide);
     }
 
-    // Показать панель для персонажа с данным ID
     public void Show(string characterId, System.Action onClose = null)
     {
         _onClose = onClose;
 
-        // Находим данные персонажа
         CharacterData data = System.Array.Find(characters, c => c.characterId == characterId);
         if (data == null)
         {
@@ -67,54 +63,58 @@ public class CharacterPanel : MonoBehaviour
             return;
         }
 
-        // Заполняем UI
-        if (nameText    != null) nameText.text    = data.displayName;
-        if (thoughtsText!= null) thoughtsText.text = data.thoughts;
+        if (nameText != null) nameText.text = data.displayName;
+        if (thoughtsText != null) thoughtsText.text = data.thoughts;
 
         if (characterImage != null)
         {
             if (data.characterSprite != null)
             {
-                characterImage.sprite  = data.characterSprite;
+                characterImage.sprite = data.characterSprite;
+                characterImage.color = Color.white;
                 characterImage.enabled = true;
             }
             else
             {
-                // Нет спрайта — показываем серый прямоугольник
                 characterImage.enabled = true;
-                characterImage.color   = new Color(0.3f, 0.3f, 0.3f);
+                characterImage.color = new Color(0.3f, 0.3f, 0.3f);
             }
         }
 
-        // Показываем с fade
         gameObject.SetActive(true);
+
         if (canvasGroup != null)
         {
-            canvasGroup.alpha          = 0f;
-            canvasGroup.interactable   = false;
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
-            canvasGroup.DOFade(1f, 0.3f).OnComplete(() =>
-            {
-                canvasGroup.interactable   = true;
-                canvasGroup.blocksRaycasts = true;
-            });
+
+            DOTween.To(() => canvasGroup.alpha, x => canvasGroup.alpha = x, 1f, 0.3f)
+                .SetUpdate(true)
+                .OnComplete(() =>
+                {
+                    canvasGroup.interactable = true;
+                    canvasGroup.blocksRaycasts = true;
+                });
         }
 
         Debug.Log($"[CharacterPanel] Открыт: {data.displayName}");
     }
 
-    // Закрыть панель. Вызывается по кнопке или из кода
     public void Hide()
     {
         if (canvasGroup != null)
         {
-            canvasGroup.interactable   = false;
+            canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
-            canvasGroup.DOFade(0f, 0.25f).OnComplete(() =>
-            {
-                gameObject.SetActive(false);
-                _onClose?.Invoke();
-            });
+
+            DOTween.To(() => canvasGroup.alpha, x => canvasGroup.alpha = x, 0f, 0.25f)
+                .SetUpdate(true)
+                .OnComplete(() =>
+                {
+                    gameObject.SetActive(false);
+                    _onClose?.Invoke();
+                });
         }
         else
         {

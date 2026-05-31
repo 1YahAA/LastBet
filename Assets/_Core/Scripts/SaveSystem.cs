@@ -1,18 +1,15 @@
-// Сохранение и загрузка данных через PlayerPrefs
 using UnityEngine;
 
 public static class SaveSystem
 {
-    // Ключи для PlayerPrefs
     private const string KEY_REVOLT = "s_revolt";
     private const string KEY_OBEDIENCE = "s_obedience";
     private const string KEY_ANALYSIS = "s_analysis";
     private const string KEY_SCENE_INDEX = "s_sceneIndex";
     private const string KEY_COCKTAIL = "s_cocktailDrunk";
     private const string KEY_COCKTAIL_CNT = "s_cocktailCount";
-    private const string KEY_HAS_SAVE = "s_hasSave"; // флаг: есть ли сохранение
+    private const string KEY_HAS_SAVE = "s_hasSave"; 
 
-    // Сохранить текущие данные из GameState в PlayerPrefs
     public static void Save(GameState state)
     {
         PlayerPrefs.SetInt(KEY_REVOLT, state.revolt);
@@ -23,10 +20,8 @@ public static class SaveSystem
         PlayerPrefs.SetInt(KEY_COCKTAIL_CNT, state.cocktailCount);
         PlayerPrefs.SetInt(KEY_HAS_SAVE, 1);
         PlayerPrefs.Save();
-        Debug.Log("[Сохранение] Выполнено");
     }
 
-    // Загрузить данные из PlayerPrefs в GameState
     public static void Load(GameState state)
     {
         if (!HasSave()) return;
@@ -39,7 +34,6 @@ public static class SaveSystem
         Debug.Log("[Сохранение] Загружено");
     }
 
-    // Удалить сохранение. Вызывается при старте новой игры и после концовки
     public static void Delete()
     {
         PlayerPrefs.DeleteKey(KEY_REVOLT);
@@ -50,9 +44,7 @@ public static class SaveSystem
         PlayerPrefs.DeleteKey(KEY_COCKTAIL_CNT);
         PlayerPrefs.DeleteKey(KEY_HAS_SAVE);
         PlayerPrefs.Save();
-        Debug.Log("[Сохранение] Удалено");
     }
 
-    // Есть ли сохранение? чтобы показать/скрыть кнопку "Продолжить"
     public static bool HasSave() => PlayerPrefs.GetInt(KEY_HAS_SAVE, 0) == 1;
 }

@@ -44,15 +44,12 @@ public class SilhouetteInteractable : MonoBehaviour,
 
     public void OnPointerClick(PointerEventData e)
     {
-        if (director != null)
-            director.OnSilhouetteClicked(this);
+  
     }
 
-    // Вызывается из CabaretDirector после просмотра
     public void MarkAsViewed()
     {
         IsViewed = true;
-        // Слегка осветляем силует — визуальная обратная связь что уже смотрели
         if (silhouetteImage != null)
             silhouetteImage.color = new Color(0.3f, 0.3f, 0.3f, 1f);
     }

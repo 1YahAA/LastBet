@@ -1,4 +1,3 @@
-// Управляет паузой: Escape открывает/закрывает меню
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,11 +16,9 @@ public class PauseManager : MonoBehaviour
                 OnResumeClicked();
             else if (GameManager.Instance.IsPlaying || GameManager.Instance.IsInDialogue)
                 OnPauseClicked();
-            // В состоянии Ending, MiniGame, MainMenu — Escape не работает
         }
     }
 
-    // Вызывается автоматически по Escape или вручную по кнопке
     public void OnPauseClicked()
     {
         GameManager.Instance.Pause();

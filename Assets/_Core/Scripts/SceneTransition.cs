@@ -1,22 +1,21 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using DG.Tweening;
+using System.Collections;
 
 public class SceneTransition : MonoBehaviour
 {
     public static SceneTransition Instance { get; private set; }
 
     [SerializeField] private Image fadeImage;
-    [SerializeField] private float fadeDuration = 0.4f;
+
+    [SerializeField] private float fadeOutDuration = 0.5f; 
+    [SerializeField] private float fadeInDuration = 1.2f; 
 
     private void Awake()
     {
-        Debug.Log($"[SceneTransition] Awake | object={name} | activeSelf={gameObject.activeSelf} | scene={gameObject.scene.name}", this);
-
         if (Instance != null && Instance != this)
         {
-            Debug.LogWarning($"[SceneTransition] Duplicate destroyed: {name}", this);
             Destroy(gameObject);
             return;
         }
@@ -24,52 +23,57 @@ public class SceneTransition : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        Debug.Log($"[SceneTransition] Instance set | fadeImage={fadeImage}", this);
-
-        if (fadeImage == null)
+        if (fadeImage != null)
         {
-            Debug.LogError("[SceneTransition] fadeImage is NULL", this);
-            return;
+            fadeImage.color = new Color(0, 0, 0, 1f);
+            fadeImage.raycastTarget = true;
         }
-
-        var c = fadeImage.color;
-        fadeImage.color = new Color(c.r, c.g, c.b, 0f);
-        fadeImage.raycastTarget = false;
     }
 
     public void FadeToScene(string sceneName)
     {
-        Debug.Log($"[SceneTransition] FadeToScene: {sceneName} | fadeImage={fadeImage}", this);
+        StartCoroutine(FadeOutRoutine(sceneName));
+    }
 
-        if (fadeImage == null)
-        {
-            Debug.LogError("[SceneTransition] FadeToScene aborted: fadeImage is NULL", this);
-            return;
-        }
+    public void FadeIn()
+    {
+        StartCoroutine(FadeInRoutine());
+    }
 
-        fadeImage.raycastTarget = true;
-
+    private IEnumerator FadeOutRoutine(string sceneName)
+    {
+        if (fadeImage != null) fadeImage.raycastTarget = true;
+        yield return StartCoroutine(Fade(0f, 1f, fadeOutDuration));
         SceneManager.sceneLoaded += OnSceneLoaded;
-        fadeImage.DOFade(1f, fadeDuration)
-            .SetUpdate(true)
-            .OnComplete(() =>
-            {
-                SceneManager.LoadScene(sceneName);
-            });
+        SceneManager.LoadScene(sceneName);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        StartCoroutine(FadeInRoutine());
+    }
 
-        if (fadeImage == null)
+    private IEnumerator FadeInRoutine()
+    {
+        yield return StartCoroutine(Fade(1f, 0f, fadeInDuration));
+        if (fadeImage != null) fadeImage.raycastTarget = false;
+    }
+
+    private IEnumerator Fade(float from, float to, float duration)
+    {
+        if (fadeImage == null) yield break;
+
+        float elapsed = 0f;
+        fadeImage.color = new Color(0, 0, 0, from);
+
+        while (elapsed < duration)
         {
-            Debug.LogError("[SceneTransition] OnSceneLoaded: fadeImage is NULL", this);
-            return;
+            elapsed += Time.unscaledDeltaTime;
+            fadeImage.color = new Color(0, 0, 0, Mathf.Lerp(from, to, elapsed / duration));
+            yield return null;
         }
 
-        fadeImage.DOFade(0f, fadeDuration)
-            .SetUpdate(true)
-            .OnComplete(() => fadeImage.raycastTarget = false);
+        fadeImage.color = new Color(0, 0, 0, to);
     }
 }

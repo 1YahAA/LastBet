@@ -18,10 +18,8 @@ public class ReelController : MonoBehaviour
     private RectTransform _rt;
     private Sprite[] _sprites;
     private int _count;
-    private float _cycleHeight; // высота одного набора символов
+    private float _cycleHeight;
     private Coroutine _spinCoroutine;
-
-    // Инициализация
 
     public void Initialize(Sprite[] sprites)
     {
@@ -34,8 +32,6 @@ public class ReelController : MonoBehaviour
         SetPositionY(0f);
     }
 
-    // Создаём 3 копии набора символов подряд
-    // Это позволяет крутить вверх и зациклиться без видимого прыжка
     private void CreateSymbolImages()
     {
         for (int i = transform.childCount - 1; i >= 0; i--)
@@ -61,7 +57,6 @@ public class ReelController : MonoBehaviour
         }
     }
 
-    // Вращение
     public void StartSpin()
     {
         if (IsSpinning) return;
@@ -78,20 +73,17 @@ public class ReelController : MonoBehaviour
         _spinCoroutine = StartCoroutine(StopRoutine(symbolIndex));
     }
 
-    // ForceSymbol теперь тоже через StopSpin — плавно, без телепорта
     public void ForceSymbol(int symbolIndex)
     {
         StopSpin(symbolIndex);
     }
 
-    // Барабан едет ВВЕРХ (Y увеличивается), зацикливается в пределах одного набора
     private IEnumerator SpinLoop()
     {
         IsSpinning = true;
         while (true)
         {
             float y = _rt.anchoredPosition.y + spinSpeed * Time.deltaTime;
-            // Зацикливаем: как только прокрутили один полный набор — возвращаемся
             if (y >= _cycleHeight)
                 y -= _cycleHeight;
             SetPositionY(y);
@@ -99,28 +91,20 @@ public class ReelController : MonoBehaviour
         }
     }
 
-    // Плавная остановка: нормализуем позицию и едем к цели через DOTween
     private IEnumerator StopRoutine(int symbolIndex)
     {
         IsSpinning = true;
 
-        // Нормализуем текущую позицию в [0, _cycleHeight)
         float currentY = Mathf.Repeat(_rt.anchoredPosition.y, _cycleHeight);
         SetPositionY(currentY);
 
-        // Целевая позиция в пределах одного цикла
         float targetY = symbolIndex * symbolHeight;
-
-        // Нам нужно ехать ВПЕРЁД (вверх) к цели
-        // Если цель уже позади — добавляем один оборот
         float destination = targetY;
         if (destination <= currentY)
             destination += _cycleHeight;
 
-        // Добавляем минимум один полный оборот — без этого барабан почти не крутится
         destination += _cycleHeight;
 
-        // Время торможения пропорционально дистанции — скорость замедления одинакова всегда
         float distance = destination - currentY;
         float duration = distance / spinSpeed * 1.2f;
         duration = Mathf.Clamp(duration, 0.5f, 1.5f);
@@ -129,13 +113,11 @@ public class ReelController : MonoBehaviour
             .SetEase(Ease.OutCubic)
             .WaitForCompletion();
 
-        // Снап к точной позиции
         SetPositionY(targetY);
         IsSpinning = false;
         _spinCoroutine = null;
     }
 
-    // Утилиты
 
     private void SetPositionY(float y)
     {
