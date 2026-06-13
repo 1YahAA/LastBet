@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Стартовое окно правил
+// Вступительная панель перед мини-игрой
 public sealed class LastBetRulesPanel : MonoBehaviour
 {
     [SerializeField] private GameObject panelRoot;
@@ -11,22 +11,47 @@ public sealed class LastBetRulesPanel : MonoBehaviour
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text bodyText;
 
-    public void Configure(GameObject root, Button button, TMP_Text title, TMP_Text body)
-    {
-        if (panelRoot == null) panelRoot = root;
-        if (startButton == null) startButton = button;
-        if (titleText == null) titleText = title;
-        if (bodyText == null) bodyText = body;
-    }
-
     public bool Exists => GetRoot() != null;
 
-    public void Show(int minInformationToChoose, int suspicionLimit, Action onStart)
+    public void Configure(GameObject root, Button button, TMP_Text title, TMP_Text body)
     {
-        SetupText(minInformationToChoose, suspicionLimit);
+        if (root != null) panelRoot = root;
+        if (button != null) startButton = button;
+        if (title != null) titleText = title;
+        if (body != null) bodyText = body;
+    }
+
+    public void Show(Action onStart, int minInformationToChoose, int suspicionLimit)
+    {
+        GameObject root = GetRoot();
+        if (root == null)
+            return;
+
+        LastBetUiUtility.SetPanelVisible(root, true);
+        root.transform.SetAsLastSibling();
+
+        if (titleText == null)
+            titleText = LastBetSceneLookup.FindText("RulesTitleText");
+
+        if (bodyText == null)
+            bodyText = LastBetSceneLookup.FindText("RulesBodyText");
+
+        if (startButton == null)
+            startButton = LastBetSceneLookup.FindButton("RulesStartButton");
+
+        if (titleText != null)
+            titleText.text = "Последняя ставка";
+
+        if (bodyText != null)
+        {
+            bodyText.text =
+                "В кабаре слишком много масок и слишком мало правды.\n\n" +
+                "Открывайте карты, собирайте следы и слушайте крупье. Его слова не всегда помогают, но иногда выдают больше, чем сами улики.\n\n" +
+                "Каждая новая карта может прояснить версию или привлечь лишнее внимание к Эвелин. Когда картина начнёт складываться, остановите партию и решите, чьему следу она поверит.\n\n" +
+                "В «Последней ставке» опасна не только ложь. Опасна уверенность, появившаяся слишком рано.";
+        }
+
         WireButton(onStart);
-        LastBetUiUtility.SetPanelVisible(GetRoot(), true);
-        GetRoot()?.transform.SetAsLastSibling();
     }
 
     public void Hide()
@@ -34,31 +59,8 @@ public sealed class LastBetRulesPanel : MonoBehaviour
         LastBetUiUtility.SetPanelVisible(GetRoot(), false);
     }
 
-    private void SetupText(int minInformationToChoose, int suspicionLimit)
-    {
-        if (titleText == null)
-            titleText = LastBetSceneLookup.FindText("RulesTitleText");
-        if (bodyText == null)
-            bodyText = LastBetSceneLookup.FindText("RulesBodyText");
-
-        if (titleText != null)
-            titleText.text = "Правила последней ставки";
-
-        if (bodyText != null)
-        {
-            bodyText.text =
-                "В кабаре слишком много масок и слишком мало правды.\n\n" +
-                "Открывайте карты, собирайте сведения и следите за тем, как меняется атмосфера за столом.\n\n" +
-                "Когда версия начнёт складываться — заберите сведения и решите, кому Эвелин готова поверить.\n\n" +
-                "Но помните:\n" +
-                "в «Последней ставке» уверенность бывает опаснее лжи.";
-        }
-    }
-
     private void WireButton(Action onStart)
     {
-        if (startButton == null)
-            startButton = LastBetSceneLookup.FindButton("RulesStartButton");
         if (startButton == null)
             return;
 

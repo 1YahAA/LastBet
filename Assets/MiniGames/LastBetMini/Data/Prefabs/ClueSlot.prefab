@@ -225,6 +225,7 @@ GameObject:
   - component: {fileID: 7093105665733941750}
   - component: {fileID: 5067475320320888314}
   - component: {fileID: 6391411747985986782}
+  - component: {fileID: 2514127306964659657}
   m_Layer: 5
   m_Name: ClueSlot
   m_TagString: Untagged
@@ -303,9 +304,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 650fe31691e292445aa0023d4f824b2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LastBetClueSlotView
-  iconImage: {fileID: 3231519555540519199}
+  clueImage: {fileID: 0}
   titleText: {fileID: 7649050276971866507}
+  removeButton: {fileID: 0}
   tooltipAnchor: {fileID: 8508496251713259807}
+  canvasGroup: {fileID: 0}
+  unstableMark: {fileID: 0}
 --- !u!114 &6391411747985986782
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -326,3 +330,15 @@ MonoBehaviour:
   m_FlexibleWidth: 0
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
+--- !u!225 &2514127306964659657
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6853225583252217185}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0

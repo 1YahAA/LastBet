@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-// Формирует последствия выбора
+// Формирует последствия выбора. Выбор подозреваемого показывает направление мысли Эвелин и влияет на скрытый токен.
 public static class LastBetResultResolver
 {
     public static LastBetStrategyToken ResolveToken(LastBetSuspect suspect, int information, int suspicion, int suspicionLimit)

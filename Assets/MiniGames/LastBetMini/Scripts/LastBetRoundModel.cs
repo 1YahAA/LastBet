@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Класс отвечает только за правила: время, подозрение, сведения и собранные улики
+// Чистое состояние раунда. Класс отвечает только за правила: время, подозрение, сведения и собранные улики.
 public sealed class LastBetRoundModel
 {
     private readonly List<LastBetStoryClue> _collectedClues = new List<LastBetStoryClue>();

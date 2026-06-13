@@ -31,7 +31,7 @@ public static class LastBetSceneLookup
 
     public static Transform FindTransform(string name)
     {
-        GameObject go = GameObject.Find(name);
+        GameObject go = FindObjectIncludeInactive(name);
         return go != null ? go.transform : null;
     }
 

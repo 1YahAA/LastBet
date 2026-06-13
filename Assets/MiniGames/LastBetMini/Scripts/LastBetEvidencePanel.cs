@@ -1,177 +1,160 @@
-using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Панель найденных улик
-public class LastBetEvidencePanel : MonoBehaviour
+// Хранилище найденных улик
+public sealed class LastBetEvidencePanel : MonoBehaviour
 {
     [Header("Scene References")]
     [SerializeField] private Transform contentParent;
     [SerializeField] private LastBetClueSlotView clueSlotPrefab;
-
-    [Header("Debug")]
-    [SerializeField] private bool debugVisualState = true;
     [SerializeField] private LastBetTooltip tooltip;
 
-    public void Configure(Transform parent, LastBetClueSlotView prefab)
+    [Header("Behaviour")]
+    [SerializeField] private bool allowRemoveFromPanel = true;
+    [SerializeField] private bool debugLogs = true;
+
+    private readonly List<LastBetClueSlotView> _slots = new List<LastBetClueSlotView>();
+
+    public int VisibleCount => _slots.Count;
+
+    public void Configure(Transform parent, LastBetClueSlotView prefab, LastBetTooltip tooltipReference = null)
     {
         if (parent != null)
             contentParent = parent;
 
         if (prefab != null)
             clueSlotPrefab = prefab;
+
+        if (tooltipReference != null)
+            tooltip = tooltipReference;
+
+        if (tooltip == null)
+            tooltip = FindAnyObjectByType<LastBetTooltip>(FindObjectsInactive.Include);
+
+        if (contentParent == null)
+            Debug.LogError("[LastBet] EvidencePanel.Configure: contentParent is still null. " +
+                           "Переименуй объект Content в сцене в 'EvidenceContent' " +
+                           "и назначь его в поле Evidence Content Parent в Inspector.");
+
+        if (clueSlotPrefab == null)
+            Debug.LogError("[LastBet] EvidencePanel.Configure: clueSlotPrefab is null. " +
+                           "Назначь префаб ClueSlot в Inspector компонента LastBetMiniGameManager.");
     }
 
     public void Clear()
     {
-        if (contentParent == null)
-        {
-            Debug.LogWarning("[LastBet] EvidencePanel.Clear skipped: contentParent is null.");
-            return;
-        }
+        tooltip?.Hide();
+        _slots.Clear();
+        LastBetUiUtility.ClearChildren(GetContentParent());
 
-        for (int i = contentParent.childCount - 1; i >= 0; i--)
-        {
-            Destroy(contentParent.GetChild(i).gameObject);
-        }
-
-        Debug.Log("[LastBet] EvidencePanel cleared.");
+        if (debugLogs)
+            Debug.Log("[LastBet] EvidencePanel cleared.");
     }
 
     public void AddEvidence(LastBetCardData data)
     {
-        if (data == null)
-        {
-            Debug.LogWarning("[LastBet] AddEvidence skipped: data is null.");
+        if (data == null || !data.AddsEvidence)
             return;
-        }
 
-        if (data.IsJoker)
+        Transform parent = GetContentParent();
+        if (parent == null)
         {
-            Debug.Log("[LastBet] AddEvidence skipped: joker has no evidence slot.");
-            return;
-        }
-
-        if (contentParent == null)
-        {
-            Debug.LogError("[LastBet] AddEvidence failed: contentParent is null. Assign EvidenceTable.");
+            Debug.LogError("[LastBet] AddEvidence: contentParent не назначен. " +
+                           "Улика не добавлена. Назначь EvidenceContent в Inspector.");
             return;
         }
 
         if (clueSlotPrefab == null)
         {
-            Debug.LogError("[LastBet] AddEvidence failed: clueSlotPrefab is null.");
+            Debug.LogError("[LastBet] AddEvidence: clueSlotPrefab не назначен. " +
+                           "Улика не добавлена. Назначь ClueSlot Prefab в Inspector.");
             return;
         }
 
-        LastBetClueSlotView slot = Instantiate(clueSlotPrefab, contentParent);
+        LastBetClueSlotView slot = Instantiate(clueSlotPrefab, parent);
         slot.gameObject.SetActive(true);
         slot.transform.SetAsLastSibling();
         slot.Setup(
             data.clueSprite,
-            data.title,
+            MakeReadableTitle(data.title),
             data.evidencePanelDescription,
-            tooltip
+            tooltip,
+            allowRemoveFromPanel ? RemoveSlot : (System.Action<LastBetClueSlotView>)null
         );
 
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent as RectTransform);
+        _slots.Add(slot);
 
-        Debug.Log(
-            "[LastBet] Evidence added: " +
-            $"storyClue={data.storyClue} | " +
-            $"title={data.title} | " +
-            $"descriptionEmpty={string.IsNullOrWhiteSpace(data.evidencePanelDescription)} | " +
-            $"parent={contentParent.name} | " +
-            $"children={contentParent.childCount}"
-        );
+        RebuildLayout(parent);
 
-        if (debugVisualState)
-        {
-            DebugEvidenceSlot(slot.gameObject, contentParent);
-            DebugEvidenceChildren(slot.gameObject);
-            DebugEvidenceParentChain(contentParent);
-        }
-    }
-
-    private void DebugEvidenceSlot(GameObject slotObject, Transform parent)
-    {
-        RectTransform slotRect = slotObject.GetComponent<RectTransform>();
-        CanvasGroup slotCanvasGroup = slotObject.GetComponent<CanvasGroup>();
-
-        Debug.Log(
-            "[LastBet] Evidence visual debug\n" +
-            $"slot={slotObject.name}\n" +
-            $"activeSelf={slotObject.activeSelf}, activeInHierarchy={slotObject.activeInHierarchy}\n" +
-            $"parent={parent?.name}\n" +
-            $"parentActive={parent?.gameObject.activeInHierarchy}\n" +
-            $"slotSize={(slotRect != null ? slotRect.rect.size.ToString() : "no rect")}\n" +
-            $"slotAnchoredPos={(slotRect != null ? slotRect.anchoredPosition.ToString() : "no rect")}\n" +
-            $"slotScale={slotObject.transform.localScale}\n" +
-            $"slotCanvasAlpha={(slotCanvasGroup != null ? slotCanvasGroup.alpha.ToString("0.###") : "no slot canvas group")}"
-        );
-    }
-
-    private void DebugEvidenceChildren(GameObject slotObject)
-    {
-        Graphic[] graphics = slotObject.GetComponentsInChildren<Graphic>(true);
-        TMP_Text[] texts = slotObject.GetComponentsInChildren<TMP_Text>(true);
-
-        Debug.Log($"[LastBet] Evidence child graphics count={graphics.Length}, texts count={texts.Length}");
-
-        foreach (Graphic graphic in graphics)
-        {
-            RectTransform rect = graphic.GetComponent<RectTransform>();
-
-            Debug.Log(
-                $"[LastBet] Evidence graphic: {graphic.name} | " +
-                $"type={graphic.GetType().Name} | " +
-                $"activeSelf={graphic.gameObject.activeSelf} | " +
-                $"activeInHierarchy={graphic.gameObject.activeInHierarchy} | " +
-                $"enabled={graphic.enabled} | " +
-                $"color={graphic.color} | " +
-                $"alpha={graphic.color.a:0.###} | " +
-                $"size={(rect != null ? rect.rect.size.ToString() : "no rect")}"
-            );
-        }
-
-        foreach (TMP_Text text in texts)
+        if (debugLogs)
         {
             Debug.Log(
-                $"[LastBet] Evidence text: {text.name} | " +
-                $"activeSelf={text.gameObject.activeSelf} | " +
-                $"activeInHierarchy={text.gameObject.activeInHierarchy} | " +
-                $"enabled={text.enabled} | " +
-                $"alpha={text.color.a:0.###} | " +
-                $"value='{text.text}'"
+                "[LastBet] Evidence added: " +
+                $"storyClue={data.storyClue} | title={data.title} | " +
+                $"parent={parent.name} | children={parent.childCount} | visibleSlots={_slots.Count}"
             );
         }
     }
 
-    private void DebugEvidenceParentChain(Transform start)
+    public void MarkLastEvidenceAsUnstable()
     {
-        Transform current = start;
+        if (_slots.Count == 0)
+            return;
 
-        while (current != null)
+        LastBetClueSlotView slot = _slots[_slots.Count - 1];
+        if (slot != null)
+            slot.SetUnstable(true);
+    }
+
+    private void RemoveSlot(LastBetClueSlotView slot)
+    {
+        if (slot == null)
+            return;
+
+        _slots.Remove(slot);
+        Destroy(slot.gameObject);
+        RebuildLayout(GetContentParent());
+
+        if (debugLogs)
+            Debug.Log($"[LastBet] Evidence hidden from panel. visibleSlots={_slots.Count}");
+    }
+
+    private Transform GetContentParent()
+    {
+        if (contentParent != null)
+            return contentParent;
+
+        Debug.LogError("[LastBet] GetContentParent: contentParent == null. " +
+                       "Улики некуда добавлять. Проверь назначение в Inspector.");
+        return null;
+    }
+
+    private static void RebuildLayout(Transform parent)
+    {
+        if (parent == null)
+            return;
+
+        if (parent is RectTransform parentRect)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+    }
+
+    private static string MakeReadableTitle(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Улика";
+
+        return value.Trim().ToLowerInvariant() switch
         {
-            RectTransform rect = current.GetComponent<RectTransform>();
-            CanvasGroup canvasGroup = current.GetComponent<CanvasGroup>();
-            Mask mask = current.GetComponent<Mask>();
-            RectMask2D rectMask = current.GetComponent<RectMask2D>();
-            LayoutGroup layoutGroup = current.GetComponent<LayoutGroup>();
-            ContentSizeFitter fitter = current.GetComponent<ContentSizeFitter>();
-
-            Debug.Log(
-                $"[LastBet] Evidence parent chain: {current.name} | " +
-                $"activeSelf={current.gameObject.activeSelf} | " +
-                $"activeInHierarchy={current.gameObject.activeInHierarchy} | " +
-                $"size={(rect != null ? rect.rect.size.ToString() : "no rect")} | " +
-                $"alpha={(canvasGroup != null ? canvasGroup.alpha.ToString("0.###") : "no canvas group")} | " +
-                $"mask={(mask != null)} | rectMask={(rectMask != null)} | " +
-                $"layout={(layoutGroup != null ? layoutGroup.GetType().Name : "none")} | " +
-                $"fitter={(fitter != null ? fitter.horizontalFit + "/" + fitter.verticalFit : "none")}"
-            );
-
-            current = current.parent;
-        }
+            "зажигалка" => "Зажигалка",
+            "vip-билет" => "VIP-билет",
+            "записка" => "Записка",
+            "маска" => "Маска",
+            "завязка" => "Завязка маски",
+            "ставки" => "Порядок ставок",
+            "пометка" => "Служебная пометка",
+            "коридор" => "Закрытый коридор",
+            _ => value.Trim()
+        };
     }
 }
