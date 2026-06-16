@@ -51,7 +51,6 @@ public class OfficeDirector : MonoBehaviour
 
     void HideAll()
     {
-        // bgOffice не скрываем — он активен с самого начала
         SetActive(bgDoor, false);
         SetActive(bgDoorShadow, false);
         SetActive(bgDoorShadowBig, false);
@@ -127,19 +126,20 @@ public class OfficeDirector : MonoBehaviour
         SetBtn(buttonRecord, false);
         SetBtn(buttonCards, false);
 
-        StartCoroutine(LaunchJackpot());
+        StartCoroutine(LaunchJoker());
     }
 
-    IEnumerator LaunchJackpot()
+    // Запуск мини-игры ДЖОКЕР (сцена 4, карты на столе)
+    IEnumerator LaunchJoker()
     {
         dialogueTrigger.StartDialogueNode("Office_Cards");
         yield return WaitDialogue();
 
         yield return FadeOverlay(0f, 1f, 0.5f);
-        GameManager.Instance.LoadMiniGame("JackpotMiniGame", MiniGameType.Roulette);
+        GameManager.Instance.LoadMiniGame("JokerMiniGame", MiniGameType.Roulette);
     }
 
-    // ── ПОСЛЕ МИНИ-ИГРЫ ───────────────────────────────────────────────────────
+    // ── ПОСЛЕ МИНИ-ИГРЫ ДЖОКЕР ───────────────────────────────────────────────
 
     IEnumerator AfterMiniGame(bool won)
     {

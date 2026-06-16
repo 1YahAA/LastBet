@@ -15,6 +15,7 @@ public class GameState : ScriptableObject
 
     [Header("Гримёрка")]
     public bool cocktailDrunk;
+    public bool cocktailInspected;
     public int cocktailCount;
 
     [Header("Бар")]
@@ -61,6 +62,12 @@ public class GameState : ScriptableObject
 
     public void RefuseCocktail() => AddToken(TokenType.Revolt);
 
+    public void InspectCocktail()
+    {
+        cocktailInspected = true;
+        AddToken(TokenType.Analysis);
+    }
+
     public void ApplyBarMiniGameResult(bool won)
     {
         barMiniGameWon = won;
@@ -69,35 +76,22 @@ public class GameState : ScriptableObject
         AddToken(won ? TokenType.Analysis : TokenType.Obedience);
     }
 
-    // Вызывается из JackpotGameStateAdapter (принимает простые типы)
     public void ApplyJackpotResult(
-        string outcome,
-        bool jokerObtained,
-        int revoltDelta,
-        int obedienceDelta,
-        int analysisDelta)
+        string outcome, bool jokerObtained,
+        int revoltDelta, int obedienceDelta, int analysisDelta)
     {
         jackpotCompleted = true;
         jackpotOutcome = outcome;
-
         if (revoltDelta > 0) AddToken(TokenType.Revolt, revoltDelta);
         if (obedienceDelta > 0) AddToken(TokenType.Obedience, obedienceDelta);
         if (analysisDelta > 0) AddToken(TokenType.Analysis, analysisDelta);
     }
 
-    // Вызывается из GameManager.FinishJokerMiniGame
     public void ApplyJokerResult(bool won)
     {
         jokerWon = won;
-        if (won)
-        {
-            truthAvailable = true;
-            AddToken(TokenType.Analysis);
-        }
-        else
-        {
-            AddToken(TokenType.Obedience);
-        }
+        if (won) { truthAvailable = true; AddToken(TokenType.Analysis); }
+        else AddToken(TokenType.Obedience);
     }
 
     public void ApplyFinalBetResult(bool won)
@@ -111,7 +105,7 @@ public class GameState : ScriptableObject
         revolt = 0; obedience = 0; analysis = 0;
         currentSceneIndex = 0; returnSceneName = "";
         currentMiniGame = MiniGameType.CardGame;
-        cocktailDrunk = false; cocktailCount = 0;
+        cocktailDrunk = false; cocktailInspected = false; cocktailCount = 0;
         barMiniGameWon = false; officeKeyObtained = false; midnightPlanKnown = false;
         jackpotCompleted = false; jackpotOutcome = "";
         jokerWon = false; truthAvailable = false;

@@ -11,11 +11,12 @@ public class BarDirector : MonoBehaviour
     [Header("Кадр 3.3 — Крупный план стойки")]
     public GameObject bgBarCounter;
 
-    [Header("Кадр 3.3 — Лео с ключом (ключ вшит)")]
+    [Header("Кадр 3.3 — Лео с ключом")]
     public GameObject bgAfterGame;
 
     [Header("Эффекты")]
     public Image blackOverlay;
+    public AudioSource doorSound;
 
     [Header("Диалоги")]
     public DialogueTrigger dialogueTrigger;
@@ -26,10 +27,8 @@ public class BarDirector : MonoBehaviour
     void Start()
     {
         HideAll();
-
         bool returned = _returnedFromMiniGame;
         _returnedFromMiniGame = false;
-
         if (returned)
             StartCoroutine(AfterMiniGame(_miniGameWon));
         else
@@ -50,53 +49,51 @@ public class BarDirector : MonoBehaviour
         }
     }
 
-    // ── КАДР 3.1 / 3.2 ───────────────────────────────────────────────────────
-
     IEnumerator RunScene()
     {
         SetActive(bgBar, true);
         SetActive(leo, true);
 
         yield return new WaitForSeconds(0.5f);
-
-        // Диалог + выбор + <<launch_cocktail_game>> — всё в одном Yarn узле
         dialogueTrigger.StartDialogueNode("Bar_Scene");
         yield return WaitDialogue();
     }
 
-    // ── КАДР 3.3 — после мини-игры ───────────────────────────────────────────
-
     IEnumerator AfterMiniGame(bool won)
     {
-        // Шаг 1: показываем BG_Bar (общий вид) на секунду
         SetActive(bgBar, true);
         SetActive(leo, true);
-
         yield return new WaitForSeconds(1.0f);
-
-        // Шаг 2: плавно переходим на крупный план стойки
         yield return FadeOverlay(0f, 1f, 0.4f);
         SetActive(bgBar, false);
         SetActive(leo, false);
         SetActive(bgBarCounter, true);
         yield return FadeOverlay(1f, 0f, 0.5f);
-
         yield return new WaitForSeconds(0.8f);
-
-        // Шаг 3: плавно переходим на Лео с ключом
         yield return FadeOverlay(0f, 1f, 0.4f);
         SetActive(bgBarCounter, false);
         SetActive(bgAfterGame, true);
         yield return FadeOverlay(1f, 0f, 0.5f);
 
-        if (blackOverlay != null) blackOverlay.raycastTarget = false;
-
-        // Диалог в зависимости от результата мини-игры
         string node = won ? "Bar_AfterGame_Win" : "Bar_AfterGame_Lose";
         dialogueTrigger.StartDialogueNode(node);
         yield return WaitDialogue();
 
-        // Переход к сцене 4
+        if (doorSound != null)
+        {
+            doorSound.Play();
+        }
+        else
+        {
+            Debug.LogWarning("[Bar] doorSound не назначен!");
+        }
+
+        float doorClipLength = (doorSound != null && doorSound.clip != null)
+            ? doorSound.clip.length
+            : 1.0f;
+
+        yield return new WaitForSeconds(doorClipLength);
+
         yield return FadeOverlay(0f, 1f, 0.5f);
         GameManager.Instance.LoadNextScene();
     }
@@ -106,8 +103,6 @@ public class BarDirector : MonoBehaviour
         _returnedFromMiniGame = true;
         _miniGameWon = won;
     }
-
-    // ── УТИЛИТЫ ───────────────────────────────────────────────────────────────
 
     IEnumerator WaitDialogue()
     {

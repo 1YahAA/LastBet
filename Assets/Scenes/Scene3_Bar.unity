@@ -2348,6 +2348,7 @@ MonoBehaviour:
   bgBarCounter: {fileID: 979608503}
   bgAfterGame: {fileID: 1309620612}
   blackOverlay: {fileID: 111817570}
+  doorSound: {fileID: 1817212054}
   dialogueTrigger: {fileID: 201914700}
 --- !u!1 &1548500998
 GameObject:
@@ -2573,9 +2574,9 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: f0b581e214693034889f9bd1780a78c0, type: 3}
+  m_Resource: {fileID: 8300000, guid: f68e5bb1b4e295b40a92aefb181eedc2, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 0
+  m_Volume: 0.4
   m_Pitch: 1
   Loop: 0
   Mute: 0

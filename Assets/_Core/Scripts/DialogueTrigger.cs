@@ -35,18 +35,14 @@ public class DialogueTrigger : MonoBehaviour
     {
         if (dialogueRunner == null) return;
         if (dialogueRunner.IsDialogueRunning) return;
-
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnDialogueStart();
-
+        if (GameManager.Instance != null) GameManager.Instance.OnDialogueStart();
         SetDialogueVisible(true);
         dialogueRunner.StartDialogue(nodeName);
     }
 
     private void OnDialogueFinished()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnDialogueEnd();
+        if (GameManager.Instance != null) GameManager.Instance.OnDialogueEnd();
         SetDialogueVisible(false);
     }
 
@@ -58,7 +54,6 @@ public class DialogueTrigger : MonoBehaviour
             linePresenterCanvasGroup.interactable = visible;
             linePresenterCanvasGroup.blocksRaycasts = visible;
         }
-
         if (continueButton != null)
         {
             continueButton.interactable = visible;
@@ -70,28 +65,81 @@ public class DialogueTrigger : MonoBehaviour
     [YarnCommand("add_token")]
     public static void YarnAddToken(string tokenName)
     {
-        if (System.Enum.TryParse<TokenType>(tokenName, out TokenType tokenType))
-            GameManager.Instance.gameState.AddToken(tokenType);
-        else
-            Debug.LogError($"[DialogueTrigger] Неизвестный жетон: '{tokenName}'");
+        if (GameManager.Instance == null || GameManager.Instance.gameState == null) return;
+        if (System.Enum.TryParse<TokenType>(tokenName, out TokenType t))
+            GameManager.Instance.gameState.AddToken(t);
+        else Debug.LogError($"[DialogueTrigger] Неизвестный жетон: '{tokenName}'");
     }
 
     [YarnCommand("drink_cocktail")]
     public static void YarnDrinkCocktail()
     {
+        if (GameManager.Instance == null || GameManager.Instance.gameState == null) return;
         GameManager.Instance.gameState.DrinkCocktail();
     }
 
     [YarnCommand("refuse_cocktail")]
     public static void YarnRefuseCocktail()
     {
+        if (GameManager.Instance == null || GameManager.Instance.gameState == null) return;
         GameManager.Instance.gameState.RefuseCocktail();
+    }
+
+    [YarnCommand("inspect_cocktail")]
+    public static void YarnInspectCocktail()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.gameState == null) return;
+        GameManager.Instance.gameState.InspectCocktail();
     }
 
     [YarnCommand("load_next_scene")]
     public static void YarnLoadNextScene()
     {
+        if (GameManager.Instance == null) return;
         GameManager.Instance.LoadNextScene();
+    }
+
+    [YarnCommand("launch_roulette")]
+    public static void YarnLaunchRoulette()
+    {
+        if (GameManager.Instance == null) return;
+        GameManager.Instance.LoadMiniGame("Roulette", MiniGameType.Roulette);
+    }
+
+    [YarnCommand("launch_cocktail_game")]
+    public static void YarnLaunchCocktailGame()
+    {
+        if (GameManager.Instance == null) return;
+        GameManager.Instance.LoadMiniGame("CoctailesMiniGame", MiniGameType.CardGame);
+    }
+
+    [YarnCommand("launch_last_bet")]
+    public static void YarnLaunchLastBet()
+    {
+        if (GameManager.Instance == null) return;
+        GameManager.Instance.LoadMiniGame("LastBetMiniGame", MiniGameType.Roulette);
+    }
+
+    [YarnCommand("show_audience_stage5")]
+    public static IEnumerator YarnShowAudienceStage5()
+    {
+        var director = Object.FindAnyObjectByType<FinalStageDirector>();
+        if (director != null)
+            yield return director.ShowAudienceForFirstChoice();
+    }
+
+    [YarnCommand("set_pending_ending")]
+    public static void YarnSetPendingEnding(string ending)
+    {
+        var director = Object.FindAnyObjectByType<FinalStageDirector>();
+        if (director != null) director.SetPendingEnding(ending);
+    }
+
+    [YarnCommand("weak_reply_done")]
+    public static void YarnWeakReplyDone()
+    {
+        var director = Object.FindAnyObjectByType<FinalStageDirector>();
+        if (director != null) director.OnWeakReplyDone();
     }
 
     [YarnCommand("enable_object")]
@@ -101,19 +149,6 @@ public class DialogueTrigger : MonoBehaviour
         if (obj == null) { Debug.LogError($"[DialogueTrigger] '{objectName}' не найден"); return; }
         var interactable = obj.GetComponent<InteractableObject>();
         if (interactable != null) interactable.Enable(true);
-        else Debug.LogWarning($"[DialogueTrigger] На '{objectName}' нет InteractableObject");
-    }
-
-    [YarnCommand("launch_roulette")]
-    public static void YarnLaunchRoulette()
-    {
-        GameManager.Instance.LoadMiniGame("Roulette", MiniGameType.Roulette);
-    }
-
-    [YarnCommand("launch_cocktail_game")]
-    public static void YarnLaunchCocktailGame()
-    {
-        GameManager.Instance.LoadMiniGame("CoctailesMiniGame", MiniGameType.CardGame);
     }
 
     [YarnCommand("enable_door")]

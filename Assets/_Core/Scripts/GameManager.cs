@@ -14,9 +14,7 @@ public class GameManager : MonoBehaviour
         "Scene2_Dressing",
         "Scene3_Bar",
         "Scene4_Casino",
-        "Scene5_Backstage",
-        "Scene6_Office",
-        "Scene7_FinalStake"
+        "Scene5_Backstage"
     };
 
     public GameplayState CurrentState { get; private set; } = GameplayState.MainMenu;
@@ -83,7 +81,6 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene(scene);
     }
 
-    // Мини-игра коктейлей (бар)
     public void FinishBarMiniGame(bool won)
     {
         gameState.ApplyBarMiniGameResult(won);
@@ -91,7 +88,6 @@ public class GameManager : MonoBehaviour
         ReturnFromMiniGame();
     }
 
-    // Мини-игра Джокер (память) — кабинет Виктора
     public void FinishJokerMiniGame(bool won)
     {
         gameState.ApplyJokerResult(won);

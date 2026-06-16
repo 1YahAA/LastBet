@@ -168,7 +168,10 @@ public class DressingRoomDirector : MonoBehaviour
         else
             Debug.LogWarning("[Dressing] fallSound не назначен!");
 
-        yield return new WaitForSeconds(0.8f);
+        float fallClipLength = (fallSound != null && fallSound.clip != null)
+            ? fallSound.clip.length
+            : 0f;
+        yield return new WaitForSeconds(Mathf.Max(0.8f, fallClipLength));
 
         SetActive(bgTable, false);
         SetActive(bgMirrorNoNote, false);
