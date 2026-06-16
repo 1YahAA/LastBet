@@ -2,14 +2,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Временный автопоиск объектов сцены по именам
 public static class LastBetSceneLookup
 {
-    public static GameObject FindObject(string name)
-    {
-        return GameObject.Find(name);
-    }
-
     public static GameObject FindObjectIncludeInactive(string name)
     {
         GameObject direct = GameObject.Find(name);
@@ -17,22 +11,16 @@ public static class LastBetSceneLookup
             return direct;
 
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
-        foreach (Transform transform in transforms)
+        foreach (Transform item in transforms)
         {
-            if (transform == null || transform.gameObject == null)
+            if (item == null || item.gameObject == null)
                 continue;
 
-            if (transform.gameObject.name == name && transform.gameObject.scene.IsValid())
-                return transform.gameObject;
+            if (item.gameObject.name == name && item.gameObject.scene.IsValid())
+                return item.gameObject;
         }
 
         return null;
-    }
-
-    public static Transform FindTransform(string name)
-    {
-        GameObject go = FindObjectIncludeInactive(name);
-        return go != null ? go.transform : null;
     }
 
     public static TMP_Text FindText(string name)

@@ -1,195 +1,118 @@
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Главный координатор мини-игры «Последняя ставка».
-// Обязанности:
-// — запуск и остановка раунда;
-// — передача событий карт в модель раунда (LastBetRoundModel);
-// — обновление UI по состоянию модели;
-// — запуск панели выбора подозреваемого;
-// — передача результата в GameState
-public class LastBetMiniGameManager : MonoBehaviour
+public sealed class LastBetMiniGameManager : MonoBehaviour
 {
-    [Header("Карты")]
+    [Header("Cards")]
     [SerializeField] private LastBetCardView cardPrefab;
     [SerializeField] private Transform cardParent;
     [SerializeField] private int cardsOnTable = 6;
     [SerializeField] private List<LastBetCardData> deckTemplates = new List<LastBetCardData>();
+    [SerializeField] private LastBetCardTooltip cardTooltip;
 
-    [Header("Спрайты карт")]
+    [Header("Card Sprites")]
     [SerializeField] private Sprite cardBaseSprite;
     [SerializeField] private Sprite cardBackSprite;
-    [SerializeField] private Sprite cardFrameSprite;
-    [SerializeField] private Sprite jokerFullCardSprite;
+    [SerializeField] private Sprite jokerCardSprite;
 
-    [Header("Панель улик")]
-    [SerializeField] private LastBetEvidencePanel evidencePanel;
-    [SerializeField] private Transform evidenceContentParent;
-    [SerializeField] private LastBetClueSlotView clueSlotPrefab;
-    [SerializeField] private LastBetTooltip evidenceTooltip;
-
-    [Header("Кнопки")]
+    [Header("Buttons")]
     [SerializeField] private Button openCardButton;
-    [SerializeField] private Button takeInfoButton;
+    [SerializeField] private Button makeBetButton;
     [SerializeField] private Button continueButton;
 
-    [Header("Тексты")]
-    [SerializeField] private TMP_Text croupierLineText;
+    [Header("Texts")]
+    [SerializeField] private TMP_Text speakerNameText;
+    [SerializeField] private TMP_Text victorLineText;
     [SerializeField] private TMP_Text infoLineText;
-    [SerializeField] private TMP_Text timerText;
-    [SerializeField] private TMP_Text suspicionText;
+    [SerializeField] private TMP_Text openedCardsText;
+    [SerializeField] private TMP_Text pressureText;
+    [SerializeField] private TMP_Text decisionTitleText;
 
-    [Header("Панели")]
-    [SerializeField] private LastBetRulesPanel rulesPanelController;
-    [SerializeField] private LastBetSuspectPanel suspectPanelController;
-    [SerializeField] private GameObject suspectPanel;
+    [Header("Panels")]
+    [SerializeField] private GameObject decisionPanel;
     [SerializeField] private GameObject resultPanel;
     [SerializeField] private TMP_Text resultTitleText;
     [SerializeField] private TMP_Text resultBodyText;
 
-    [Header("Кнопки подозреваемых")]
-    [SerializeField] private LastBetChoiceButton helgaChoice;
-    [SerializeField] private LastBetChoiceButton victorChoice;
-    [SerializeField] private LastBetChoiceButton marieChoice;
+    [Header("Outcome Buttons")]
+    [SerializeField] private LastBetOutcomeButton freedomChoice;
+    [SerializeField] private LastBetOutcomeButton cageChoice;
+    [SerializeField] private LastBetOutcomeButton truthChoice;
 
-    [Header("Параметры раунда")]
-    [SerializeField] private float roundTime = 150f;
-    [SerializeField] private int minInformationToChoose = 3;
-    [SerializeField] private int suspicionLimit = 5;
-
-    [Header("Индикаторы подозрения")]
-    [Tooltip("Красные огоньки/кружки подозрения. Можно не заполнять — менеджер попробует найти объект SuspicionCircles.")]
-    [SerializeField] private Image[] suspicionIndicators;
-    [SerializeField] private Sprite suspicionEmptySprite;
-    [SerializeField] private Sprite suspicionFilledSprite;
-    [SerializeField] private Color suspicionEmptyColor = new Color(1f, 1f, 1f, 0.35f);
-    [SerializeField] private Color suspicionFilledColor = Color.white;
-
-    [Header("Туториал")]
-    [SerializeField] private bool playIntroTutorial = true;
-
-    [Tooltip("Перетащи объект UITutorialManager из сцены.")]
-    [SerializeField] private MonoBehaviour githubTutorialManager;
-
-    [Tooltip("Имя SequenceID туториала. Обычно LastBetIntro.")]
-    [SerializeField] private string introTutorialSequenceName = "LastBetIntro";
-
-    // Модель раунда — единственный источник правды о времени, подозрении и сведениях.
-    // Менеджер не дублирует эти счётчики у себя.
-    private readonly LastBetRoundModel _round = new LastBetRoundModel();
+    [Header("Round Parameters")]
+    [SerializeField] private int minimumCardsToChoose = 3;
+    [SerializeField] private int pressureLimit = 2;
+    [SerializeField] private bool autoStartRound = true;
+    [SerializeField] private bool returnToNextSceneOnContinue = true;
 
     private readonly List<LastBetCardView> _cardViews = new List<LastBetCardView>();
 
     private int _nextCardIndex;
-    private bool _introTutorialStarted;
+    private int _openedCardsCount;
+    private int _freedomScore;
+    private int _cageScore;
+    private int _truthScore;
+    private int _pressureScore;
 
-    // Результат передаётся в GameState после завершения мини-игры.
-    private LastBetSuspect _selectedSuspect = LastBetSuspect.None;
-    private LastBetStrategyToken _resultToken = LastBetStrategyToken.None;
+    private LastBetOutcome _selectedOutcome = LastBetOutcome.None;
+    private bool _roundActive;
+    private bool _resultShown;
+    private bool _lastBetWon;
 
-    // ── Unity lifecycle ───────────────────────────────────────────────────────
+    private Button _freedomButton;
+    private Button _cageButton;
+    private Button _truthButton;
 
     private void Awake()
     {
         AutoBindSceneReferences();
+        BindOutcomeButtons();
         WireButtons();
-        ConfigureSubPanels();
-        HideRuntimePanels();
+        SetStaticTexts();
+        HideResultPanel();
     }
 
     private void Start()
     {
-        // Показываем панель правил если она есть в сцене.
-        // После нажатия «Начать» запускается туториал, и только потом — раунд.
-        // Если панели правил нет — сразу туториал или раунд.
-        if (rulesPanelController != null && rulesPanelController.Exists)
-            rulesPanelController.Show(OnRulesAccepted, minInformationToChoose, suspicionLimit);
-        else
-            OnRulesAccepted();
-    }
-
-    private void Update()
-    {
-        // Тик времени делегируем модели. Менеджер только читает результат.
-        // Пока туториал не завершён — модель не активна, тик ничего не делает.
-        if (!_round.Active || _round.ChoiceOpened)
-            return;
-
-        _round.Tick(Time.deltaTime);
-
-        if (_round.TimeLeft <= 0f)
-        {
-            EndRoundByTime();
-            return;
-        }
-
-        RefreshTopUi();
-    }
-
-    // ── Запуск ───────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Вызывается когда игрок закрыл панель правил.
-    /// Запускает туториал. Таймер ещё не идёт.
-    /// </summary>
-    private void OnRulesAccepted()
-    {
-        if (rulesPanelController != null)
-            rulesPanelController.Hide();
-
-        // Туториал показывается до старта раунда.
-        // StartRound вызывается только после его завершения.
-        if (playIntroTutorial)
-            StartGithubTutorialIfNeeded(onCompleted: StartRound);
-        else
+        if (autoStartRound)
             StartRound();
     }
 
-    /// <summary>
-    /// Инициализирует раунд и запускает таймер.
-    /// Вызывается только после туториала — таймер не идёт во время обучения.
-    /// </summary>
     public void StartRound()
     {
         _nextCardIndex = 0;
-        _selectedSuspect = LastBetSuspect.None;
-        _resultToken = LastBetStrategyToken.None;
+        _openedCardsCount = 0;
+        _freedomScore = 0;
+        _cageScore = 0;
+        _truthScore = 0;
+        _pressureScore = 0;
+        _selectedOutcome = LastBetOutcome.None;
+        _roundActive = true;
+        _resultShown = false;
+        _lastBetWon = false;
 
-        // Модель сбрасывает все счётчики и запускает таймер.
-        // До этого вызова время не идёт.
-        _round.Start(roundTime);
-
-        _cardViews.Clear();
         LastBetUiUtility.ClearChildren(cardParent);
+        _cardViews.Clear();
 
-        if (evidencePanel != null)
-            evidencePanel.Clear();
-
-        if (suspectPanelController != null)
-            suspectPanelController.Hide();
-
-        LastBetUiUtility.SetPanelVisible(resultPanel, false);
+        HideResultPanel();
+        LastBetUiUtility.SetPanelVisible(decisionPanel, true);
 
         List<LastBetCardData> deck = LastBetDeckService.BuildDeck(deckTemplates);
         BuildCardsOnTable(deck);
 
-        SetCroupierLine("Карты уже на столе. Не ищите один прямой ответ — ищите след, которому Эвелин готова поверить.");
-        SetInfoLine("Откройте карту. Когда версия начнёт складываться, остановитесь и сделайте вывод.");
+        SetVictorLine("Перед вами — последняя ставка Эвелин. Пусть карты покажут, готова ли она к собственному решению.");
+        SetInfoLine($"Откройте минимум {minimumCardsToChoose} карты, затем выберите: свобода, клетка или правда.");
 
-        RefreshTopUi();
-        RefreshButtonState();
+        RefreshUi();
     }
-
-    // ── Карты ────────────────────────────────────────────────────────────────
 
     private void BuildCardsOnTable(List<LastBetCardData> deck)
     {
         if (cardPrefab == null || cardParent == null)
         {
-            Debug.LogError("[LastBet] Card Prefab или Card Parent не назначены в Inspector.");
+            Debug.LogError("[LastBet] Card Prefab или Card Parent не назначены.");
             return;
         }
 
@@ -198,20 +121,20 @@ public class LastBetMiniGameManager : MonoBehaviour
         {
             LastBetCardView view = Instantiate(cardPrefab, cardParent);
             view.gameObject.SetActive(true);
-            view.Setup(deck[i], cardBaseSprite, cardBackSprite, cardFrameSprite, jokerFullCardSprite);
+            view.Setup(deck[i], cardTooltip, cardBaseSprite, cardBackSprite, jokerCardSprite);
             _cardViews.Add(view);
         }
     }
 
     private void OpenNextCard()
     {
-        if (!_round.Active || _round.ChoiceOpened)
+        if (!_roundActive || _resultShown)
             return;
 
         if (_nextCardIndex >= _cardViews.Count)
         {
-            SetInfoLine("Карты на столе закончились. Теперь нужно сделать вывод.");
-            RefreshButtonState();
+            SetInfoLine("Карты закончились. Теперь нужно сделать ставку.");
+            RefreshUi();
             return;
         }
 
@@ -223,9 +146,7 @@ public class LastBetMiniGameManager : MonoBehaviour
 
         cardView.ShowOpened();
         ApplyCard(cardView.Data);
-
-        RefreshTopUi();
-        RefreshButtonState();
+        RefreshUi();
     }
 
     private void ApplyCard(LastBetCardData data)
@@ -233,372 +154,264 @@ public class LastBetMiniGameManager : MonoBehaviour
         if (data == null)
             return;
 
-        // Модель обновляет счётчики и возвращает результат применения карты.
-        LastBetCardApplyResult result = _round.ApplyCard(data, suspicionLimit);
+        data.NormalizeValuesFromSymbol();
 
-        SetCroupierLine(string.IsNullOrWhiteSpace(data.croupierLine)
-            ? "Карта молчит. Но молчание за этим столом редко бывает пустым."
-            : data.croupierLine);
+        _openedCardsCount++;
+        _freedomScore += data.freedomValue;
+        _cageScore += data.cageValue;
+        _truthScore += data.truthValue;
+        _pressureScore += data.pressureValue;
 
-        if (result.IsJoker)
+        SetVictorLine(string.IsNullOrWhiteSpace(data.victorLine)
+            ? GetDefaultVictorLine(data.symbolType)
+            : data.victorLine);
+
+        if (data.IsJoker)
         {
-            ApplyJokerEffect();
-        }
-        else
-        {
-            // Обычная карта добавляет улику в панель.
-            if (result.AddedEvidence && evidencePanel != null)
-                evidencePanel.AddEvidence(data);
-
-            UpdateInfoLineAfterCard();
-        }
-
-        // Подозрение достигло лимита — раунд завершается принудительно.
-        if (result.OpenChoiceBecauseSuspicionLimit)
-            EndRoundBySuspicion();
-    }
-
-    private void ApplyJokerEffect()
-    {
-        // Джокер не добавляет улику, но затуманивает последнюю найденную.
-        // Если улик ещё нет — даём отдельный текст, чтобы игрок понял что произошло.
-        if (evidencePanel != null && evidencePanel.VisibleCount > 0)
-        {
-            evidencePanel.MarkLastEvidenceAsUnstable();
-            SetInfoLine("Джокер вмешался. Последний найденный след теперь под сомнением — его могли подбросить намеренно.");
-        }
-        else
-        {
-            // Улик ещё нет — Джокер просто усиливает напряжение.
-            SetInfoLine("Джокер появился раньше улик. Кто-то следит за Эвелин с самого начала.");
-        }
-    }
-
-    private void UpdateInfoLineAfterCard()
-    {
-        // Все тексты читаем из модели — не из локальных переменных.
-        if (_round.Suspicion >= suspicionLimit - 1)
-        {
-            SetInfoLine("Обстановка стала опасной. Ещё одна ошибка — и внимание переключится на Эвелин.");
+            SetInfoLine("Джокер вмешался в расклад. Давление Виктора усиливается.");
             return;
         }
 
-        if (_round.Information < minInformationToChoose)
+        if (_openedCardsCount < minimumCardsToChoose)
         {
-            SetInfoLine($"Сведений пока мало: {_round.Information}/{minInformationToChoose}. Откройте ещё карту.");
+            SetInfoLine($"Открыто карт: {_openedCardsCount}/{minimumCardsToChoose}. Эвелин ещё не готова сделать ставку.");
             return;
         }
 
-        SetInfoLine("Версия уже может сложиться. Можно рискнуть ещё одной картой или сделать вывод сейчас.");
+        SetInfoLine("Теперь можно сделать ставку или открыть ещё одну карту.");
     }
 
-    // ── Решение ──────────────────────────────────────────────────────────────
-
-    private void TryStartDecision()
+    private string GetDefaultVictorLine(LastBetSymbolType symbol)
     {
-        if (!_round.Active || _round.ChoiceOpened)
+        switch (symbol)
+        {
+            case LastBetSymbolType.Bird:
+                return "Птица всегда мечтает о небе. Пока не вспоминает, кто её кормит.";
+
+            case LastBetSymbolType.Cage:
+            case LastBetSymbolType.Cocktail:
+                return "Дом узнаёт своих. Даже если они делают вид, что хотят уйти.";
+
+            case LastBetSymbolType.Eye:
+            case LastBetSymbolType.Microphone:
+                return "Осторожнее, дорогая. Не все истины стоит произносить при публике.";
+
+            case LastBetSymbolType.Joker:
+                return "Вот видишь? Даже судьба противится твоей дерзости.";
+
+            default:
+                return "Карта молчит. Но зал всё равно смотрит.";
+        }
+    }
+
+    private void SelectOutcome(LastBetOutcome outcome)
+    {
+        if (!_roundActive || _resultShown)
             return;
 
-        if (!_round.HasEnoughInformation(minInformationToChoose))
+        if (_openedCardsCount < minimumCardsToChoose)
         {
-            SetInfoLine($"Эвелин пока не готова сделать вывод. Нужно хотя бы {minInformationToChoose} сведения.");
+            SetInfoLine($"Сначала нужно открыть минимум {minimumCardsToChoose} карты.");
             return;
         }
 
-        StartDecision();
+        _selectedOutcome = outcome;
+        UpdateOutcomeVisuals();
+        RefreshUi();
     }
 
-    private void StartDecision()
+    private void MakeBet()
     {
-        // Модель фиксирует что выбор открыт — таймер останавливается.
-        _round.OpenChoice();
+        if (!_roundActive || _resultShown)
+            return;
 
-        SetCroupierLine("Теперь не ищите доказательство. Решите, как Эвелин прочитала этот след.");
-        SetInfoLine("Выберите версию: Хэльга, Виктор или Мари.");
-
-        RefreshButtonState();
-
-        if (suspectPanelController != null)
+        if (_openedCardsCount < minimumCardsToChoose)
         {
-            suspectPanelController.Initialize(OnSuspectSelected);
-            suspectPanelController.Show();
+            SetInfoLine($"Сначала нужно открыть минимум {minimumCardsToChoose} карты.");
+            return;
         }
-        else
+
+        if (_selectedOutcome == LastBetOutcome.None)
         {
-            LastBetUiUtility.SetPanelVisible(suspectPanel, true);
+            SetInfoLine("Выберите, к чему склоняется Эвелин: свобода, клетка или правда.");
+            return;
         }
-    }
 
-    private void OnSuspectSelected(LastBetSuspect suspect)
-    {
-        _selectedSuspect = suspect;
-        _round.SelectSuspect(suspect);
+        bool matchesSpread = IsSelectedOutcomeTiedForStrongest(_selectedOutcome);
+        bool pressureTooHigh = _pressureScore >= pressureLimit;
 
-        // Токен определяется через ResultResolver — единая точка этой логики.
-        _resultToken = LastBetResultResolver.ResolveToken(
-            suspect,
-            _round.Information,
-            _round.Suspicion,
-            suspicionLimit
-        );
+        _lastBetWon = matchesSpread && !pressureTooHigh;
+        _roundActive = false;
+        _resultShown = true;
 
-        suspectPanelController.SetSelected(suspect);
         ShowResultPanel();
+        RefreshUi();
+    }
+
+    private bool IsSelectedOutcomeTiedForStrongest(LastBetOutcome outcome)
+    {
+        int max = Mathf.Max(_freedomScore, Mathf.Max(_cageScore, _truthScore));
+
+        switch (outcome)
+        {
+            case LastBetOutcome.Freedom:
+                return _freedomScore == max;
+
+            case LastBetOutcome.Cage:
+                return _cageScore == max;
+
+            case LastBetOutcome.Truth:
+                return _truthScore == max;
+
+            default:
+                return false;
+        }
     }
 
     private void ShowResultPanel()
     {
         LastBetUiUtility.SetPanelVisible(resultPanel, true);
 
-        // Панель результата не пересказывает выбор игроку —
-        // она даёт Эвелин внутреннюю реакцию на принятое решение.
-        // Текст зависит от того, кого выбрали.
         if (resultTitleText != null)
-            resultTitleText.text = BuildResultTitle();
+            resultTitleText.text = _lastBetWon ? "Ставка сделана" : "Ставка сорвалась";
 
         if (resultBodyText != null)
-            resultBodyText.text = BuildResultBody();
-
-        SetInfoLine("Решение принято. Продолжите сюжет.");
-    }
-
-    private string BuildResultTitle()
-    {
-        // Заголовок — внутреннее состояние Эвелин, не оценка выбора.
-        return _selectedSuspect switch
         {
-            LastBetSuspect.Helga  => "Эвелин сделала выбор",
-            LastBetSuspect.Victor => "Эвелин сделала выбор",
-            LastBetSuspect.Marie  => "Эвелин сделала выбор",
-            _                     => "Партия завершена"
-        };
+            resultBodyText.text = _lastBetWon
+                ? "Виктор улыбается, но на мгновение теряет контроль.\n\n«Впечатляет. Я почти забыл, какой упрямой ты можешь быть»."
+                : "Свет прожектора становится резче. Шум зала давит сильнее.\n\n«Тише, Эвелин. Не всем дано выдержать свет прожектора».";
+        }
+
+        SetVictorLine(_lastBetWon
+            ? "Впечатляет. Я почти забыл, какой упрямой ты можешь быть."
+            : "Тише, Эвелин. Не всем дано выдержать свет прожектора.");
+
+        SetInfoLine("Раунд завершён. Продолжите финальную сцену.");
     }
-
-    private string BuildResultBody()
-    {
-        // Текст передаёт ощущение Эвелин — без оценки правильности.
-        // Игрок не знает верен ли его выбор, только что Эвелин на это решилась.
-        return _selectedSuspect switch
-        {
-            LastBetSuspect.Helga =>
-                "Эвелин смотрит на карты. Следы ведут к Хэльге — или она хочет, чтобы так казалось.\n\n" +
-                "Что-то не даёт покоя. Но выбор сделан.",
-
-            LastBetSuspect.Victor =>
-                "Виктор слишком очевиден. Эвелин знает это — и всё равно выбирает его след.\n\n" +
-                "Иногда самый заметный след оказывается настоящим.",
-
-            LastBetSuspect.Marie =>
-                "Мари почти не оставляет следов. Именно поэтому Эвелин смотрит в её сторону.\n\n" +
-                "Тихие люди в кабаре знают больше всех.",
-
-            _ =>
-                "Эвелин не успела собрать устойчивую версию. " +
-                "Останется только ощущение чужого вмешательства."
-        };
-    }
-
-    // ── Завершение по внешним условиям ───────────────────────────────────────
-
-    private void EndRoundBySuspicion()
-    {
-        // Подозрение достигло предела — игрок не успел сделать вывод.
-        // Токен Obedience: Эвелин спасовала под давлением.
-        _round.OpenChoice();
-        _resultToken = LastBetStrategyToken.Obedience;
-
-        SetCroupierLine("За столом стало слишком тихо. Теперь смотрят уже не на карты, а на Эвелин.");
-        SetInfoLine("Подозрение достигло предела. Версия осталась неполной.");
-
-        LastBetUiUtility.SetPanelVisible(resultPanel, true);
-
-        if (resultTitleText != null)
-            resultTitleText.text = "Слишком много внимания";
-
-        if (resultBodyText != null)
-            resultBodyText.text =
-                "Эвелин пыталась увидеть больше, но кабаре заметило её интерес. " +
-                "Некоторые выводы придётся сделать уже после этой партии.";
-
-        RefreshButtonState();
-    }
-
-    private void EndRoundByTime()
-    {
-        // Время истекло — токен Analysis: Эвелин наблюдала, но не успела решить.
-        _round.OpenChoice();
-        _resultToken = LastBetStrategyToken.Analysis;
-
-        SetCroupierLine("Время партии вышло. Некоторые следы так и остались между строк.");
-        SetInfoLine("Время закончилось. Продолжите с тем, что успели заметить.");
-
-        LastBetUiUtility.SetPanelVisible(resultPanel, true);
-
-        if (resultTitleText != null)
-            resultTitleText.text = "Партия завершена";
-
-        if (resultBodyText != null)
-            resultBodyText.text =
-                "Эвелин не получила полной картины. " +
-                "Но даже неполные сведения иногда меняют то, как смотришь на людей вокруг.";
-
-        RefreshButtonState();
-    }
-
-    // ── Передача результата в GameState ──────────────────────────────────────
 
     private void ContinueAfterResult()
     {
         ApplyResultToGameState();
 
         Debug.Log(
-            "[LastBet] Мини-игра завершена. " +
-            $"Токен={_resultToken}, Подозреваемый={_selectedSuspect}, " +
-            $"Улики={string.Join(", ", _round.CollectedClues)}"
+            "[LastBet] Завершено. " +
+            $"Выбор={_selectedOutcome}, Победа={_lastBetWon}, " +
+            $"Freedom={_freedomScore}, Cage={_cageScore}, Truth={_truthScore}, Pressure={_pressureScore}"
         );
 
-        // Переход к следующей сцене по порядку из GameManager.sceneOrder.
-        GameManager.Instance.LoadNextScene();
+        if (!returnToNextSceneOnContinue)
+            return;
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.LoadNextScene();
+        else
+            Debug.LogWarning("[LastBet] GameManager.Instance не найден. Переход не выполнен.");
     }
 
     private void ApplyResultToGameState()
     {
-        // GameManager.Instance.gameState — публичное поле, не свойство State.
-        if (GameManager.Instance == null)
+        if (GameManager.Instance == null || GameManager.Instance.gameState == null)
         {
-            Debug.LogWarning("[LastBet] GameManager.Instance не найден. Результат не записан.");
+            Debug.LogWarning("[LastBet] GameState не найден. Результат не записан.");
             return;
         }
 
         GameState state = GameManager.Instance.gameState;
-        if (state == null)
+
+        switch (_selectedOutcome)
         {
-            Debug.LogWarning("[LastBet] GameManager.gameState == null. Результат не записан.");
-            return;
+            case LastBetOutcome.Freedom:
+                state.AddToken(TokenType.Revolt, 2);
+                break;
+
+            case LastBetOutcome.Cage:
+                state.AddToken(TokenType.Obedience, 2);
+                break;
+
+            case LastBetOutcome.Truth:
+                state.AddToken(TokenType.Analysis, 2);
+                break;
         }
 
-        // Конвертируем наш токен в TokenType который понимает GameState.
-        // LastBetStrategyToken и TokenType — разные enum, поэтому маппинг явный.
-        TokenType tokenType = _resultToken switch
-        {
-            LastBetStrategyToken.Revolt     => TokenType.Revolt,
-            LastBetStrategyToken.Obedience  => TokenType.Obedience,
-            LastBetStrategyToken.Analysis   => TokenType.Analysis,
-            // None — мини-игра завершилась без выбора (не должно происходить в норме).
-            // Записываем Analysis как нейтральный исход.
-            _                               => TokenType.Analysis
-        };
+        if (_lastBetWon)
+            state.AddToken(TokenType.Analysis, 1);
 
-        state.AddToken(tokenType);
-
-        // LastBetSuspectChoice и LastBetCompleted в GameState не объявлены —
-        // выбор подозреваемого пишем только в лог, чтобы не ломать компиляцию.
-        // Если нужно сохранять выбор в GameState — добавь поля туда:
-        //   public string lastBetSuspectChoice;
-        //   public bool lastBetCompleted;
-        // и раскомментируй строки ниже:
-        // state.lastBetSuspectChoice = _selectedSuspect.ToString();
+        // В GameState нужно добавить поля:
+        // public bool lastBetCompleted;
+        // public bool lastBetWon;
+        // public string lastBetChoice;
+        // public int lastBetPressureScore;
+        //
+        // После добавления раскомментировать:
         // state.lastBetCompleted = true;
-
-        Debug.Log($"[LastBet] Записан токен {tokenType} | Подозреваемый: {_selectedSuspect}");
+        // state.lastBetWon = _lastBetWon;
+        // state.lastBetChoice = _selectedOutcome.ToString();
+        // state.lastBetPressureScore = _pressureScore;
     }
 
-    // ── UI helpers ───────────────────────────────────────────────────────────
-
-    private void RefreshTopUi()
+    private void RefreshUi()
     {
-        if (timerText != null)
-            timerText.text = Mathf.CeilToInt(_round.TimeLeft).ToString();
+        if (openedCardsText != null)
+            openedCardsText.text = $"Карты: {_openedCardsCount}/{minimumCardsToChoose}";
 
-        if (suspicionText != null)
-            suspicionText.text = $"{_round.Suspicion}/{suspicionLimit}";
+        if (pressureText != null)
+            pressureText.text = _pressureScore > 0 ? $"Давление: {_pressureScore}/{pressureLimit}" : string.Empty;
 
-        RefreshSuspicionIndicators();
-    }
-
-    private void RefreshSuspicionIndicators()
-    {
-        EnsureSuspicionIndicatorsBound();
-
-        if (suspicionIndicators == null || suspicionIndicators.Length == 0)
-            return;
-
-        for (int i = 0; i < suspicionIndicators.Length; i++)
-        {
-            Image indicator = suspicionIndicators[i];
-            if (indicator == null)
-                continue;
-
-            bool filled = i < _round.Suspicion;
-            indicator.enabled = true;
-
-            if (suspicionEmptySprite != null || suspicionFilledSprite != null)
-                indicator.sprite = filled ? suspicionFilledSprite : suspicionEmptySprite;
-
-            indicator.color = filled ? suspicionFilledColor : suspicionEmptyColor;
-        }
-    }
-
-    private void EnsureSuspicionIndicatorsBound()
-    {
-        if (suspicionIndicators != null && suspicionIndicators.Length > 0)
-            return;
-
-        GameObject root = LastBetSceneLookup.FindObjectIncludeInactive("SuspicionCircles");
-        if (root == null)
-            return;
-
-        Image[] allImages = root.GetComponentsInChildren<Image>(true);
-        List<Image> result = new List<Image>();
-
-        foreach (Image image in allImages)
-        {
-            if (image == null)
-                continue;
-
-            // Берём только дочерние изображения, чтобы не захватить фон панели.
-            if (image.transform == root.transform)
-                continue;
-
-            result.Add(image);
-        }
-
-        suspicionIndicators = result.ToArray();
-    }
-
-    private void RefreshButtonState()
-    {
         if (openCardButton != null)
-        {
-            openCardButton.interactable =
-                _round.Active &&
-                !_round.ChoiceOpened &&
-                _nextCardIndex < _cardViews.Count &&
-                _round.Suspicion < suspicionLimit;
-        }
+            openCardButton.interactable = _roundActive && !_resultShown && _nextCardIndex < _cardViews.Count;
 
-        if (takeInfoButton != null)
-        {
-            takeInfoButton.interactable =
-                _round.Active &&
-                !_round.ChoiceOpened &&
-                _round.HasEnoughInformation(minInformationToChoose);
-        }
+        bool canChoose = _roundActive && !_resultShown && _openedCardsCount >= minimumCardsToChoose;
+
+        SetButtonInteractable(_freedomButton, canChoose);
+        SetButtonInteractable(_cageButton, canChoose);
+        SetButtonInteractable(_truthButton, canChoose);
+
+        if (makeBetButton != null)
+            makeBetButton.interactable = canChoose && _selectedOutcome != LastBetOutcome.None;
+
+        if (continueButton != null)
+            continueButton.interactable = _resultShown;
+
+        UpdateOutcomeVisuals();
     }
 
-    private void SetCroupierLine(string value)
+    private void UpdateOutcomeVisuals()
     {
-        if (croupierLineText != null)
-            croupierLineText.text = value ?? string.Empty;
+        if (freedomChoice != null)
+            freedomChoice.SetSelected(_selectedOutcome == LastBetOutcome.Freedom);
+
+        if (cageChoice != null)
+            cageChoice.SetSelected(_selectedOutcome == LastBetOutcome.Cage);
+
+        if (truthChoice != null)
+            truthChoice.SetSelected(_selectedOutcome == LastBetOutcome.Truth);
     }
 
-    private void SetInfoLine(string value)
+    private void SetStaticTexts()
     {
-        if (infoLineText != null)
-            infoLineText.text = value ?? string.Empty;
+        if (speakerNameText != null)
+            speakerNameText.text = "Виктор";
+
+        if (decisionTitleText != null)
+            decisionTitleText.text = "Что выбирает Эвелин?";
+
+        SetButtonText(openCardButton, "Вскрыть карту");
+        SetButtonText(makeBetButton, "Сделать ставку");
+        SetButtonText(_freedomButton, "Свобода");
+        SetButtonText(_cageButton, "Клетка");
+        SetButtonText(_truthButton, "Правда");
     }
 
-    // ── Инициализация ────────────────────────────────────────────────────────
+    private void BindOutcomeButtons()
+    {
+        _freedomButton = freedomChoice != null ? freedomChoice.GetComponent<Button>() : null;
+        _cageButton = cageChoice != null ? cageChoice.GetComponent<Button>() : null;
+        _truthButton = truthChoice != null ? truthChoice.GetComponent<Button>() : null;
+
+        if (freedomChoice != null) freedomChoice.BindDefaults();
+        if (cageChoice != null) cageChoice.BindDefaults();
+        if (truthChoice != null) truthChoice.BindDefaults();
+    }
 
     private void WireButtons()
     {
@@ -608,10 +421,10 @@ public class LastBetMiniGameManager : MonoBehaviour
             openCardButton.onClick.AddListener(OpenNextCard);
         }
 
-        if (takeInfoButton != null)
+        if (makeBetButton != null)
         {
-            takeInfoButton.onClick.RemoveAllListeners();
-            takeInfoButton.onClick.AddListener(TryStartDecision);
+            makeBetButton.onClick.RemoveAllListeners();
+            makeBetButton.onClick.AddListener(MakeBet);
         }
 
         if (continueButton != null)
@@ -619,51 +432,41 @@ public class LastBetMiniGameManager : MonoBehaviour
             continueButton.onClick.RemoveAllListeners();
             continueButton.onClick.AddListener(ContinueAfterResult);
         }
+
+        if (_freedomButton != null)
+        {
+            _freedomButton.onClick.RemoveAllListeners();
+            _freedomButton.onClick.AddListener(() => SelectOutcome(LastBetOutcome.Freedom));
+        }
+
+        if (_cageButton != null)
+        {
+            _cageButton.onClick.RemoveAllListeners();
+            _cageButton.onClick.AddListener(() => SelectOutcome(LastBetOutcome.Cage));
+        }
+
+        if (_truthButton != null)
+        {
+            _truthButton.onClick.RemoveAllListeners();
+            _truthButton.onClick.AddListener(() => SelectOutcome(LastBetOutcome.Truth));
+        }
     }
 
-    private void ConfigureSubPanels()
-    {
-        if (evidencePanel == null)
-            evidencePanel = GetComponent<LastBetEvidencePanel>();
-        if (evidencePanel == null)
-            evidencePanel = gameObject.AddComponent<LastBetEvidencePanel>();
-
-        evidencePanel.Configure(evidenceContentParent, clueSlotPrefab, evidenceTooltip);
-
-        if (suspectPanelController == null)
-            suspectPanelController = GetComponent<LastBetSuspectPanel>();
-        if (suspectPanelController == null)
-            suspectPanelController = gameObject.AddComponent<LastBetSuspectPanel>();
-
-        suspectPanelController.Configure(suspectPanel, helgaChoice, victorChoice, marieChoice);
-    }
-
-    private void HideRuntimePanels()
+    private void HideResultPanel()
     {
         LastBetUiUtility.SetPanelVisible(resultPanel, false);
-
-        if (suspectPanelController != null)
-            suspectPanelController.Hide();
-        else
-            LastBetUiUtility.SetPanelVisible(suspectPanel, false);
     }
 
     private void AutoBindSceneReferences()
     {
-        if (githubTutorialManager == null)
-            githubTutorialManager = FindGithubTutorialManager();
-
-        EnsureSuspicionIndicatorsBound();
-
         if (openCardButton == null)
             openCardButton = LastBetSceneLookup.FindButton("OpenCardButton");
-        if (takeInfoButton == null)
-            takeInfoButton = LastBetSceneLookup.FindButton("TakeInfoButton");
+
+        if (makeBetButton == null)
+            makeBetButton = LastBetSceneLookup.FindButton("MakeBetButton");
+
         if (continueButton == null)
             continueButton = LastBetSceneLookup.FindButton("ContinueButton");
-
-        if (rulesPanelController == null)
-            rulesPanelController = FindAnyObjectByType<LastBetRulesPanel>(FindObjectsInactive.Include);
 
         if (cardParent == null)
         {
@@ -671,156 +474,63 @@ public class LastBetMiniGameManager : MonoBehaviour
             if (go != null) cardParent = go.transform;
         }
 
-        if (evidenceContentParent == null)
-        {
-            // Ищем по уникальному имени — не "Content", чтобы не попасть на чужой объект.
-            GameObject go = LastBetSceneLookup.FindObjectIncludeInactive("EvidenceContent");
-            if (go != null) evidenceContentParent = go.transform;
-        }
+        if (decisionPanel == null)
+            decisionPanel = LastBetSceneLookup.FindObjectIncludeInactive("DecisionPanel");
 
-        if (suspectPanel == null)
-            suspectPanel = LastBetSceneLookup.FindObjectIncludeInactive("SuspectPanel");
         if (resultPanel == null)
             resultPanel = LastBetSceneLookup.FindObjectIncludeInactive("ResultPanel");
 
-        if (croupierLineText == null)
-            croupierLineText = LastBetSceneLookup.FindText("CroupierLineText");
+        if (cardTooltip == null)
+        {
+            GameObject go = LastBetSceneLookup.FindObjectIncludeInactive("CardTooltip");
+            if (go != null)
+                cardTooltip = go.GetComponent<LastBetCardTooltip>();
+        }
+
+        if (speakerNameText == null)
+            speakerNameText = LastBetSceneLookup.FindText("SpeakerNameText");
+
+        if (victorLineText == null)
+            victorLineText = LastBetSceneLookup.FindText("VictorLineText");
+
         if (infoLineText == null)
             infoLineText = LastBetSceneLookup.FindText("InfoLineText");
-        if (timerText == null)
-            timerText = LastBetSceneLookup.FindText("TimerText");
-        if (suspicionText == null)
-            suspicionText = LastBetSceneLookup.FindText("SuspicionText");
+
+        if (openedCardsText == null)
+            openedCardsText = LastBetSceneLookup.FindText("OpenedCardsText");
+
+        if (pressureText == null)
+            pressureText = LastBetSceneLookup.FindText("PressureText");
+
+        if (decisionTitleText == null)
+            decisionTitleText = LastBetSceneLookup.FindText("DecisionTitleText");
     }
 
-    // ── Туториал ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Запускает туториал и вызывает onCompleted когда он завершится.
-    /// Если туториал не найден — сразу вызывает onCompleted.
-    /// Таймер раунда не стартует пока туториал не закончен.
-    /// </summary>
-    private void StartGithubTutorialIfNeeded(Action onCompleted)
+    private void SetVictorLine(string value)
     {
-        if (_introTutorialStarted)
-        {
-            onCompleted?.Invoke();
+        if (victorLineText != null)
+            victorLineText.text = value ?? string.Empty;
+    }
+
+    private void SetInfoLine(string value)
+    {
+        if (infoLineText != null)
+            infoLineText.text = value ?? string.Empty;
+    }
+
+    private static void SetButtonInteractable(Button button, bool interactable)
+    {
+        if (button != null)
+            button.interactable = interactable;
+    }
+
+    private static void SetButtonText(Button button, string value)
+    {
+        if (button == null)
             return;
-        }
 
-        if (githubTutorialManager == null)
-            githubTutorialManager = FindGithubTutorialManager();
-
-        if (githubTutorialManager == null)
-        {
-            Debug.LogWarning("[LastBet] UITutorialManager не найден. Туториал пропущен, раунд стартует.");
-            onCompleted?.Invoke();
-            return;
-        }
-
-        // Подписываемся на завершение туториала через callback.
-        // Когда туториал закончится — вызовем onCompleted (то есть StartRound).
-        bool started = TryStartGithubTutorial(githubTutorialManager, introTutorialSequenceName, onCompleted);
-
-        if (started)
-        {
-            _introTutorialStarted = true;
-            Debug.Log($"[LastBet] Туториал запущен: {introTutorialSequenceName}. Раунд ждёт завершения.");
-        }
-        else
-        {
-            Debug.LogWarning("[LastBet] Туториал не запустился. Раунд стартует без него.");
-            onCompleted?.Invoke();
-        }
-    }
-
-    private MonoBehaviour FindGithubTutorialManager()
-    {
-        foreach (MonoBehaviour b in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
-        {
-            if (b != null && b.GetType().Name == "UITutorialManager")
-                return b;
-        }
-        return null;
-    }
-
-    private bool TryStartGithubTutorial(MonoBehaviour manager, string sequenceName, Action onCompleted)
-    {
-        if (manager == null || string.IsNullOrWhiteSpace(sequenceName))
-            return false;
-
-        Type type = manager.GetType();
-
-        // Сначала пробуем подписаться на событие завершения туториала,
-        // чтобы вызвать StartRound только после его окончания.
-        TrySubscribeToTutorialEnd(manager, type, onCompleted);
-
-        foreach (var method in type.GetMethods())
-        {
-            if (method.Name != "StartTutorial")
-                continue;
-
-            var parameters = method.GetParameters();
-            if (parameters.Length != 1)
-                continue;
-
-            Type paramType = parameters[0].ParameterType;
-            object argument;
-
-            if (paramType.IsEnum)
-            {
-                try { argument = Enum.Parse(paramType, sequenceName); }
-                catch { continue; }
-            }
-            else if (paramType == typeof(string))
-            {
-                argument = sequenceName;
-            }
-            else
-            {
-                continue;
-            }
-
-            method.Invoke(manager, new[] { argument });
-            return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Пытается подписаться на событие завершения туториала (OnTutorialEnd или подобное).
-    /// Если такого события нет — onCompleted вызывается сразу как fallback.
-    /// </summary>
-    private void TrySubscribeToTutorialEnd(MonoBehaviour manager, Type type, Action onCompleted)
-    {
-        // Ищем событие по типичным именам из GitHub-пакетов туториалов.
-        var endEvent = type.GetEvent("OnTutorialEnd")
-                    ?? type.GetEvent("OnSequenceCompleted")
-                    ?? type.GetEvent("OnCompleted");
-
-        if (endEvent != null)
-        {
-            try
-            {
-                // Создаём делегат нужного типа и подписываемся.
-                var handler = Delegate.CreateDelegate(endEvent.EventHandlerType, onCompleted.Target, onCompleted.Method, throwOnBindFailure: false);
-                if (handler != null)
-                {
-                    endEvent.AddEventHandler(manager, handler);
-                    return;
-                }
-            }
-            catch
-            {
-                // Тип делегата не совпал — используем fallback ниже.
-            }
-        }
-
-        // Если подписаться не удалось — запускаем раунд сразу.
-        // Туториал покажется, но таймер не будет ждать его завершения.
-        Debug.LogWarning("[LastBet] Не удалось подписаться на завершение туториала. " +
-                         "Раунд стартует параллельно. Свяжи OnTutorialEnd вручную в Inspector.");
-        onCompleted?.Invoke();
+        TMP_Text text = button.GetComponentInChildren<TMP_Text>(true);
+        if (text != null)
+            text.text = value;
     }
 }

@@ -1,265 +1,185 @@
-using TMPro;
+using System;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
-using DG.Tweening;
 
 public sealed class JackpotUiPanel : MonoBehaviour
 {
     [Header("Кнопки")]
     [SerializeField] private Button spinButton;
-    [SerializeField] private Button stopButton;
     [SerializeField] private Button continueButton;
 
-    [Header("Тексты")]
-    [SerializeField] private TMP_Text rewardText;
-    [SerializeField] private TMP_Text riskText;
-    [SerializeField] private TMP_Text spinText;
-    [SerializeField] private TMP_Text debtText;
-    [SerializeField] private TMP_Text resultText;
-    [SerializeField] private TMP_Text resultDebtText;
-
-    [Header("Панели")]
-    [SerializeField] private GameObject resultPanel;
-
-    [Header("Risk Indicator / лампочки")]
-    [SerializeField] private Graphic riskGlowLow;
-    [SerializeField] private Graphic riskGlowMedium;
-    [SerializeField] private Graphic riskGlowHigh;
-    [SerializeField] private float activeLampAlpha = 1f;
-    [SerializeField] private float inactiveLampAlpha = 0.18f;
-
-    [Header("Machine Effects")]
-    [SerializeField] private Graphic machineNoiseOverlay;
-    [SerializeField] private Graphic debtFlashOverlay;
-    [SerializeField] private Graphic machineEyeLight;
-    [SerializeField] private Graphic reelShadowOverlay;
-
-    [Header("Рычаг")]
-    [SerializeField] private GameObject leverIdle;
-    [SerializeField] private GameObject leverPull;
+    [Header("Joker Card")]
+    [SerializeField] private RectTransform jokerRewardCard;
+    [SerializeField] private CanvasGroup jokerCardCanvasGroup;
+    [SerializeField] private RectTransform jokerCardSpawnPoint;
+    [SerializeField] private RectTransform jokerCardTargetPoint;
 
     [Header("Анимация")]
     [SerializeField] private float fadeDuration = 0.25f;
-    [SerializeField] private float flashDuration = 0.18f;
-    [SerializeField] private float spinReelShadowAlpha = 0.55f;
-    [SerializeField] private float idleReelShadowAlpha = 0.25f;
+    [SerializeField] private float jokerMoveDuration = 0.7f;
 
     public Button SpinButton => spinButton;
-    public Button StopButton => stopButton;
     public Button ContinueButton => continueButton;
+
+    private Image _jokerImage;
+    private Sequence _jokerSequence;
+
+    private void Awake()
+    {
+        CacheJokerComponents();
+    }
 
     public void Initialize()
     {
-        SetResultPanel(false);
+        CacheJokerComponents();
+
         SetSpinEnabled(true);
-        SetStopEnabled(false);
-        SetContinueEnabled(false);
-        SetLeverPulled(false);
-        SetRiskVisuals(JackpotRiskLevel.Low);
-        SetGraphicAlpha(debtFlashOverlay, 0f);
-        SetGraphicAlpha(machineEyeLight, 0f);
-        SetGraphicAlpha(reelShadowOverlay, idleReelShadowAlpha);
-    }
-
-    public void SetSpinEnabled(bool value)
-    {
-        if (spinButton != null)
-            spinButton.interactable = value;
-    }
-
-    public void SetStopEnabled(bool value)
-    {
-        if (stopButton != null)
-            stopButton.interactable = value;
-    }
-
-    public void SetContinueEnabled(bool value)
-    {
-        if (continueButton != null)
-            continueButton.interactable = value;
+        SetContinueVisible(false);
+        HideJokerCardInstant();
     }
 
     public void OnSpinStarted()
     {
-        SetLeverPulled(true);
-        FadeGraphic(reelShadowOverlay, spinReelShadowAlpha, fadeDuration);
-    }
-
-    public void OnSpinEnded()
-    {
-        SetLeverPulled(false);
-        FadeGraphic(reelShadowOverlay, idleReelShadowAlpha, fadeDuration);
-    }
-
-    public void UpdateState(JackpotRiskModel risk)
-    {
-        if (risk == null)
-            return;
-
-        if (rewardText != null)
-            rewardText.text = $"Выигрыш: {risk.Reward}";
-
-        if (riskText != null)
-            riskText.text = $"Риск: {RiskName(risk.CurrentRiskLevel)}";
-
-        if (spinText != null)
-            spinText.text = $"Прокрутки: {risk.SpinCount} / {risk.MaxSpins}";
-
-        if (debtText != null)
-            debtText.text = risk.Debt.ToString();
-
-        SetRiskVisuals(risk.CurrentRiskLevel);
-    }
-
-    public void ShowDebtFlash()
-    {
-        if (debtFlashOverlay == null)
-            return;
-
-        debtFlashOverlay.DOKill();
-        SetGraphicAlpha(debtFlashOverlay, 0f);
-        debtFlashOverlay.DOFade(1f, flashDuration)
-            .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => SetGraphicAlpha(debtFlashOverlay, 0f));
-    }
-
-    public void ShowHairpinInterference()
-    {
-        if (machineEyeLight != null)
-        {
-            machineEyeLight.DOKill();
-            machineEyeLight.DOFade(0.8f, fadeDuration)
-                .SetLoops(2, LoopType.Yoyo)
-                .OnComplete(() => SetGraphicAlpha(machineEyeLight, 0f));
-        }
-
-        if (machineNoiseOverlay != null)
-        {
-            machineNoiseOverlay.DOKill();
-            float target = Mathf.Max(machineNoiseOverlay.color.a, 0.45f);
-            machineNoiseOverlay.DOFade(target, fadeDuration);
-        }
-    }
-
-    public void ShowResult(JackpotFinalResult result)
-    {
-        SetResultPanel(true);
         SetSpinEnabled(false);
-        SetStopEnabled(false);
-        SetContinueEnabled(true);
-        SetLeverPulled(false);
+        SetContinueVisible(false);
+    }
 
-        if (result == null)
+    public void OnSpinEnded(bool canSpinAgain)
+    {
+        SetSpinEnabled(canSpinAgain);
+        SetContinueVisible(false);
+    }
+
+    public void SetSpinEnabled(bool enabled)
+    {
+        if (spinButton == null)
             return;
 
-        if (resultText != null)
-            resultText.text = BuildResultText(result);
-
-        if (resultDebtText != null)
-            resultDebtText.text = result.Debt.ToString();
+        spinButton.interactable = enabled;
+        spinButton.gameObject.SetActive(enabled);
     }
 
-    private string BuildResultText(JackpotFinalResult result)
+    public void SetContinueVisible(bool visible)
     {
-        return result.Outcome switch
-        {
-            JackpotOutcome.ControlledExit => "Вы остановились вовремя.",
-            JackpotOutcome.RiskyDefiance => "Вы остановились, но автомат уже успел оставить след.",
-            JackpotOutcome.TrappedByDebt => "Некоторые долги остаются даже после тишины.",
-            JackpotOutcome.ForcedStop => "Автомат оборвал игру сам.",
-            _ => "Автомат замолкает."
-        };
-    }
-
-    private void SetResultPanel(bool value)
-    {
-        if (resultPanel != null)
-            resultPanel.SetActive(value);
-    }
-
-    private void SetLeverPulled(bool pulled)
-    {
-        if (leverIdle != null)
-            leverIdle.SetActive(!pulled);
-
-        if (leverPull != null)
-            leverPull.SetActive(pulled);
-    }
-
-    private void SetRiskVisuals(JackpotRiskLevel level)
-    {
-        SetLamp(riskGlowLow, level == JackpotRiskLevel.Low);
-        SetLamp(riskGlowMedium, level == JackpotRiskLevel.Medium);
-        SetLamp(riskGlowHigh, level == JackpotRiskLevel.High || level == JackpotRiskLevel.Critical);
-
-        if (machineNoiseOverlay != null)
-        {
-            float noise = level switch
-            {
-                JackpotRiskLevel.Low => 0.05f,
-                JackpotRiskLevel.Medium => 0.18f,
-                JackpotRiskLevel.High => 0.35f,
-                JackpotRiskLevel.Critical => 0.55f,
-                _ => 0f
-            };
-
-            FadeGraphic(machineNoiseOverlay, noise, fadeDuration);
-        }
-
-        if (machineEyeLight != null && (level == JackpotRiskLevel.High || level == JackpotRiskLevel.Critical))
-        {
-            FadeGraphic(machineEyeLight, level == JackpotRiskLevel.Critical ? 0.55f : 0.32f, fadeDuration);
-        }
-        else if (machineEyeLight != null)
-        {
-            FadeGraphic(machineEyeLight, 0f, fadeDuration);
-        }
-    }
-
-    private void SetLamp(Graphic graphic, bool active)
-    {
-        FadeGraphic(graphic, active ? activeLampAlpha : inactiveLampAlpha, fadeDuration);
-    }
-
-    private void SetGraphicAlpha(Graphic graphic, float value)
-    {
-        if (graphic == null)
+        if (continueButton == null)
             return;
 
-        Color color = graphic.color;
-        color.a = value;
-        graphic.color = color;
+        continueButton.gameObject.SetActive(visible);
+        continueButton.interactable = visible;
     }
 
-    private void FadeGraphic(Graphic graphic, float alpha, float duration)
+    public void ShowFinalState()
     {
-        if (graphic == null)
+        SetSpinEnabled(false);
+        SetContinueVisible(true);
+    }
+
+    public void AnimateJokerCard(Action onComplete)
+    {
+        CacheJokerComponents();
+
+        if (jokerRewardCard == null)
+        {
+            Debug.LogWarning("[JackpotUiPanel] jokerRewardCard не назначен.", this);
+            onComplete?.Invoke();
+            return;
+        }
+
+        _jokerSequence?.Kill();
+        jokerRewardCard.DOKill();
+        jokerCardCanvasGroup?.DOKill();
+
+        jokerRewardCard.gameObject.SetActive(true);
+        jokerRewardCard.SetAsLastSibling();
+        jokerRewardCard.localScale = Vector3.one * 0.75f;
+
+        if (jokerCardSpawnPoint != null)
+            jokerRewardCard.position = jokerCardSpawnPoint.position;
+
+        ForceJokerImageAlpha(1f);
+
+        if (jokerCardCanvasGroup != null)
+        {
+            jokerCardCanvasGroup.alpha = 0f;
+            jokerCardCanvasGroup.interactable = false;
+            jokerCardCanvasGroup.blocksRaycasts = false;
+        }
+
+        Vector3 targetPosition = jokerCardTargetPoint != null
+            ? jokerCardTargetPoint.position
+            : jokerRewardCard.position;
+
+        _jokerSequence = DOTween.Sequence();
+
+        if (jokerCardCanvasGroup != null)
+            _jokerSequence.Append(jokerCardCanvasGroup.DOFade(1f, fadeDuration));
+        else
+            _jokerSequence.AppendInterval(fadeDuration);
+
+        _jokerSequence.Join(jokerRewardCard.DOScale(1f, fadeDuration));
+        _jokerSequence.Append(jokerRewardCard.DOMove(targetPosition, jokerMoveDuration).SetEase(Ease.OutCubic));
+        _jokerSequence.OnComplete(() => onComplete?.Invoke());
+    }
+
+    private void HideJokerCardInstant()
+    {
+        _jokerSequence?.Kill();
+
+        if (jokerRewardCard != null)
+        {
+            jokerRewardCard.DOKill();
+            jokerRewardCard.localScale = Vector3.one;
+
+            if (jokerCardSpawnPoint != null)
+                jokerRewardCard.position = jokerCardSpawnPoint.position;
+
+            jokerRewardCard.gameObject.SetActive(false);
+        }
+
+        ForceJokerImageAlpha(1f);
+
+        if (jokerCardCanvasGroup != null)
+        {
+            jokerCardCanvasGroup.DOKill();
+            jokerCardCanvasGroup.alpha = 0f;
+            jokerCardCanvasGroup.interactable = false;
+            jokerCardCanvasGroup.blocksRaycasts = false;
+        }
+    }
+
+    private void CacheJokerComponents()
+    {
+        if (jokerRewardCard != null && _jokerImage == null)
+            _jokerImage = jokerRewardCard.GetComponent<Image>();
+
+        if (jokerRewardCard != null && jokerCardCanvasGroup == null)
+            jokerCardCanvasGroup = jokerRewardCard.GetComponent<CanvasGroup>();
+
+        if (jokerRewardCard != null && jokerCardCanvasGroup == null)
+            jokerCardCanvasGroup = jokerRewardCard.gameObject.AddComponent<CanvasGroup>();
+    }
+
+    private void ForceJokerImageAlpha(float alpha)
+    {
+        if (_jokerImage == null)
             return;
 
-        graphic.DOKill();
-        graphic.DOFade(alpha, duration);
-    }
-
-    private string RiskName(JackpotRiskLevel level)
-    {
-        return level switch
-        {
-            JackpotRiskLevel.Low => "низкий",
-            JackpotRiskLevel.Medium => "средний",
-            JackpotRiskLevel.High => "высокий",
-            JackpotRiskLevel.Critical => "критический",
-            _ => "низкий"
-        };
+        Color color = _jokerImage.color;
+        color.a = alpha;
+        _jokerImage.color = color;
+        _jokerImage.enabled = _jokerImage.sprite != null;
+        _jokerImage.preserveAspect = true;
     }
 
     private void OnDestroy()
     {
-        if (riskGlowLow != null) riskGlowLow.DOKill();
-        if (riskGlowMedium != null) riskGlowMedium.DOKill();
-        if (riskGlowHigh != null) riskGlowHigh.DOKill();
-        if (machineNoiseOverlay != null) machineNoiseOverlay.DOKill();
-        if (debtFlashOverlay != null) debtFlashOverlay.DOKill();
-        if (machineEyeLight != null) machineEyeLight.DOKill();
-        if (reelShadowOverlay != null) reelShadowOverlay.DOKill();
+        _jokerSequence?.Kill();
+
+        if (jokerRewardCard != null)
+            jokerRewardCard.DOKill();
+
+        if (jokerCardCanvasGroup != null)
+            jokerCardCanvasGroup.DOKill();
     }
 }

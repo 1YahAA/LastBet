@@ -2,52 +2,38 @@ using System;
 
 public enum JackpotMiniGameState
 {
-    NotStarted = 0,
-    Intro = 1,
-    Idle = 2,
-    Spinning = 3,
-    ResolvingSpin = 4,
-    Decision = 5,
-    Completed = 6
+    NotStarted   = 0,
+    Idle         = 1,
+    Spinning     = 2,
+    ResolvingSpin = 3,
+    ShowingResult = 4,
+    Completed    = 5
 }
 
 public enum JackpotSymbolType
 {
-    Blank = 0,
-    Coin = 1,
-    DoubleCoin = 2,
-    Debt = 3,
-    Hairpin = 4
-}
-
-public enum JackpotRiskLevel
-{
-    Low = 0,
-    Medium = 1,
-    High = 2,
-    Critical = 3
+    Blank       = 0,
+    Bird        = 1,
+    Cage        = 2,
+    Eye         = 3,
+    Cocktail    = 4,
+    Microphone  = 5
 }
 
 public enum JackpotOutcome
 {
-    ControlledExit = 0,
-    RiskyDefiance = 1,
-    TrappedByDebt = 2,
-    ForcedStop = 3
-}
-
-public enum JackpotLeoRelationState
-{
-    Friendly = 0,
-    Ambiguous = 1,
-    SilentObserver = 2
+    Refused     = 0,
+    Combination = 1,
+    Jackpot     = 2
 }
 
 public enum JackpotBehaviourToken
 {
-    Revolt = 0,
-    Obedience = 1,
-    Analysis = 2
+    None        = 0,
+    Revolt      = 1,
+    Obedience   = 2,
+    Analysis    = 3,
+    Mixed       = 4
 }
 
 [Serializable]

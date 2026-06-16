@@ -3,35 +3,35 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "GameState", menuName = "Game/GameState")]
 public class GameState : ScriptableObject
 {
-
-    [Header("Жетоны (скрытые от игрока)")]
-    [Tooltip("Бунт — за сопротивление и дерзкие выборы")]
+    [Header("Жетоны")]
     public int revolt;
-
-    [Tooltip("Послушание — за подчинение и согласие")]
     public int obedience;
-
-    [Tooltip("Анализ — за молчание и наблюдение")]
     public int analysis;
 
-    [Header("Прогресс прохождения")]
-    [Tooltip("Индекс текущей сцены в массиве sceneOrder[] в GameManager")]
+    [Header("Прогресс")]
     public int currentSceneIndex;
-
-    [Tooltip("Имя сцены для возврата после мини-игры")]
     public string returnSceneName;
-
-    [Tooltip("Тип запущенной мини-игры — чтобы знать какой жетон давать")]
     public MiniGameType currentMiniGame;
 
-
-    [Header("Постоянные эффекты (из сценария)")]
-    [Tooltip("Выпила ли Эвелин коктейль хоть раз — влияет на реплики и сложность")]
+    [Header("Гримёрка")]
     public bool cocktailDrunk;
-
-    [Tooltip("Сколько раз выпила коктейль — больше 1 даёт двойной штраф")]
     public int cocktailCount;
 
+    [Header("Бар")]
+    public bool barMiniGameWon;
+    public bool officeKeyObtained;
+    public bool midnightPlanKnown;
+
+    [Header("Джекпот")]
+    public bool jackpotCompleted;
+    public string jackpotOutcome;
+
+    [Header("Джокер")]
+    public bool jokerWon;
+    public bool truthAvailable;
+
+    [Header("Финал")]
+    public bool finalBetWon;
 
     public void AddToken(TokenType type, int amount = 1)
     {
@@ -39,8 +39,9 @@ public class GameState : ScriptableObject
         {
             case TokenType.Revolt: revolt += amount; break;
             case TokenType.Obedience: obedience += amount; break;
-            case TokenType.Analysis: analysis  += amount; break;
+            case TokenType.Analysis: analysis += amount; break;
         }
+        Debug.Log($"[Жетон] +{amount} {type} | Б:{revolt} П:{obedience} А:{analysis}");
     }
 
     public EndingType GetEnding()
@@ -50,7 +51,6 @@ public class GameState : ScriptableObject
         return EndingType.Death;
     }
 
-
     public void DrinkCocktail()
     {
         cocktailDrunk = true;
@@ -59,20 +59,63 @@ public class GameState : ScriptableObject
         if (cocktailCount > 1) AddToken(TokenType.Analysis);
     }
 
-    public void RefuseCocktail()
+    public void RefuseCocktail() => AddToken(TokenType.Revolt);
+
+    public void ApplyBarMiniGameResult(bool won)
     {
-        AddToken(TokenType.Revolt);
+        barMiniGameWon = won;
+        officeKeyObtained = true;
+        midnightPlanKnown = won;
+        AddToken(won ? TokenType.Analysis : TokenType.Obedience);
     }
 
+    // Вызывается из JackpotGameStateAdapter (принимает простые типы)
+    public void ApplyJackpotResult(
+        string outcome,
+        bool jokerObtained,
+        int revoltDelta,
+        int obedienceDelta,
+        int analysisDelta)
+    {
+        jackpotCompleted = true;
+        jackpotOutcome = outcome;
+
+        if (revoltDelta > 0) AddToken(TokenType.Revolt, revoltDelta);
+        if (obedienceDelta > 0) AddToken(TokenType.Obedience, obedienceDelta);
+        if (analysisDelta > 0) AddToken(TokenType.Analysis, analysisDelta);
+    }
+
+    // Вызывается из GameManager.FinishJokerMiniGame
+    public void ApplyJokerResult(bool won)
+    {
+        jokerWon = won;
+        if (won)
+        {
+            truthAvailable = true;
+            AddToken(TokenType.Analysis);
+        }
+        else
+        {
+            AddToken(TokenType.Obedience);
+        }
+    }
+
+    public void ApplyFinalBetResult(bool won)
+    {
+        finalBetWon = won;
+        AddToken(won ? TokenType.Analysis : TokenType.Obedience);
+    }
 
     public void ResetAll()
     {
-        revolt = 0;
-        obedience = 0;
-        analysis = 0;
-        currentSceneIndex = 0;
-        returnSceneName = "";
-        cocktailDrunk = false;
-        cocktailCount = 0;
+        revolt = 0; obedience = 0; analysis = 0;
+        currentSceneIndex = 0; returnSceneName = "";
+        currentMiniGame = MiniGameType.CardGame;
+        cocktailDrunk = false; cocktailCount = 0;
+        barMiniGameWon = false; officeKeyObtained = false; midnightPlanKnown = false;
+        jackpotCompleted = false; jackpotOutcome = "";
+        jokerWon = false; truthAvailable = false;
+        finalBetWon = false;
+        Debug.Log("[GameState] Сброс выполнен");
     }
 }

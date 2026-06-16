@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
@@ -13,51 +14,148 @@ public sealed class JackpotSymbolSprite
 
 public sealed class JackpotReelController : MonoBehaviour
 {
-    [Header("UI")]
-    [SerializeField] private Image symbolImage;
+    [Header("Viewport")]
+    [SerializeField] private RectTransform viewport;
+    [SerializeField] private RectTransform contentRoot;
 
     [Header("Символы")]
     [SerializeField] private JackpotSymbolSprite[] symbolSprites;
 
-    [Header("Анимация")]
-    [SerializeField] private float spinDuration = 0.75f;
-    [SerializeField] private float tickInterval = 0.06f;
-    [SerializeField] private float punchScale = 0.08f;
+    [Header("Прокрутка")]
+    [SerializeField] private int symbolsInSpin = 14;
+    [SerializeField] private float defaultSpinDuration = 1.2f;
+    [SerializeField] private Ease spinEase = Ease.OutCubic;
 
     public JackpotSymbolType CurrentSymbol { get; private set; } = JackpotSymbolType.Blank;
 
-    public IEnumerator SpinTo(JackpotSymbolType result)
+    private readonly List<GameObject> _spawnedItems = new();
+
+    private void Awake()
     {
-        if (symbolImage == null)
-            yield break;
+        if (viewport == null)
+            viewport = transform as RectTransform;
 
-        float elapsed = 0f;
+        if (viewport != null && viewport.GetComponent<RectMask2D>() == null)
+            viewport.gameObject.AddComponent<RectMask2D>();
 
-        transform.DOKill();
-        transform.localScale = Vector3.one;
-        transform.DOPunchScale(Vector3.one * punchScale, spinDuration, 8, 0.5f);
-
-        while (elapsed < spinDuration)
-        {
-            SetSymbol(RandomSymbolForAnimation());
-            elapsed += tickInterval;
-            yield return new WaitForSeconds(tickInterval);
-        }
-
-        SetSymbol(result);
+        if (contentRoot == null)
+            contentRoot = CreateContentRoot();
     }
 
-    public void SetSymbol(JackpotSymbolType symbol)
+    public IEnumerator SpinTo(JackpotSymbolType result)
     {
+        yield return SpinTo(result, defaultSpinDuration);
+    }
+
+    public IEnumerator SpinTo(JackpotSymbolType result, float duration)
+    {
+        if (viewport == null)
+            yield break;
+
+        if (contentRoot == null)
+            contentRoot = CreateContentRoot();
+
+        contentRoot.DOKill();
+        ClearSpawnedItems();
+
+        float itemHeight = viewport.rect.height;
+        float itemWidth = viewport.rect.width;
+
+        if (itemHeight <= 0f)
+            itemHeight = 180f;
+
+        if (itemWidth <= 0f)
+            itemWidth = 180f;
+
+        List<JackpotSymbolType> stripSymbols = BuildSpinStrip(result);
+
+        for (int i = 0; i < stripSymbols.Count; i++)
+        {
+            CreateSymbolItem(stripSymbols[i], i, itemWidth, itemHeight);
+        }
+
+        contentRoot.anchoredPosition = Vector2.zero;
+
+        float targetY = (stripSymbols.Count - 1) * itemHeight;
+
+        Tween tween = contentRoot
+            .DOAnchorPosY(targetY, duration)
+            .SetEase(spinEase);
+
+        yield return tween.WaitForCompletion();
+
+        CurrentSymbol = result;
+    }
+
+    public void SetSymbolInstant(JackpotSymbolType symbol)
+    {
+        if (viewport == null)
+            viewport = transform as RectTransform;
+
+        if (contentRoot == null)
+            contentRoot = CreateContentRoot();
+
+        contentRoot.DOKill();
+        ClearSpawnedItems();
+
+        float itemHeight = viewport != null && viewport.rect.height > 0f ? viewport.rect.height : 180f;
+        float itemWidth = viewport != null && viewport.rect.width > 0f ? viewport.rect.width : 180f;
+
+        CreateSymbolItem(symbol, 0, itemWidth, itemHeight);
+        contentRoot.anchoredPosition = Vector2.zero;
+
         CurrentSymbol = symbol;
+    }
 
-        if (symbolImage == null)
-            return;
+    private List<JackpotSymbolType> BuildSpinStrip(JackpotSymbolType finalSymbol)
+    {
+        List<JackpotSymbolType> result = new();
 
-        symbolImage.sprite = GetSprite(symbol);
-        symbolImage.enabled = symbolImage.sprite != null;
-        symbolImage.color = Color.white;
-        symbolImage.preserveAspect = true;
+        int count = Mathf.Max(4, symbolsInSpin);
+
+        for (int i = 0; i < count - 1; i++)
+            result.Add(RandomSymbolForAnimation());
+
+        result.Add(finalSymbol);
+
+        return result;
+    }
+
+    private void CreateSymbolItem(JackpotSymbolType symbol, int index, float width, float height)
+    {
+        GameObject obj = new GameObject($"Symbol_{index}_{symbol}", typeof(RectTransform), typeof(Image));
+        obj.transform.SetParent(contentRoot, false);
+
+        RectTransform rt = obj.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(width, height);
+        rt.anchoredPosition = new Vector2(0f, -index * height);
+        rt.localScale = Vector3.one;
+
+        Image image = obj.GetComponent<Image>();
+        image.sprite = GetSprite(symbol);
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.enabled = image.sprite != null;
+
+        _spawnedItems.Add(obj);
+    }
+
+    private RectTransform CreateContentRoot()
+    {
+        GameObject obj = new GameObject("ReelContent", typeof(RectTransform));
+        obj.transform.SetParent(transform, false);
+
+        RectTransform rt = obj.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = viewport != null ? viewport.rect.size : new Vector2(180f, 180f);
+
+        return rt;
     }
 
     private JackpotSymbolType RandomSymbolForAnimation()
@@ -66,11 +164,11 @@ public sealed class JackpotReelController : MonoBehaviour
 
         return value switch
         {
-            0 => JackpotSymbolType.Coin,
-            1 => JackpotSymbolType.DoubleCoin,
-            2 => JackpotSymbolType.Blank,
-            3 => JackpotSymbolType.Debt,
-            _ => JackpotSymbolType.Hairpin
+            0 => JackpotSymbolType.Bird,
+            1 => JackpotSymbolType.Cage,
+            2 => JackpotSymbolType.Eye,
+            3 => JackpotSymbolType.Cocktail,
+            _ => JackpotSymbolType.Microphone
         };
     }
 
@@ -88,8 +186,20 @@ public sealed class JackpotReelController : MonoBehaviour
         return null;
     }
 
+    private void ClearSpawnedItems()
+    {
+        foreach (GameObject item in _spawnedItems)
+        {
+            if (item != null)
+                Destroy(item);
+        }
+
+        _spawnedItems.Clear();
+    }
+
     private void OnDestroy()
     {
-        transform.DOKill();
+        if (contentRoot != null)
+            contentRoot.DOKill();
     }
 }

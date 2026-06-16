@@ -1,6 +1,5 @@
 using UnityEngine;
 
-// Общие UI-операции
 public static class LastBetUiUtility
 {
     public static void SetPanelVisible(GameObject panel, bool visible)

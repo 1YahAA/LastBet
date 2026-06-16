@@ -3,41 +3,50 @@ using System;
 [Serializable]
 public sealed class JackpotFinalResult
 {
-    public JackpotOutcome Outcome { get; }
+    public string Title              { get; }
+    public string Description        { get; }
+    public bool Refused              { get; }
+    public bool IsJackpot            { get; }
+    public bool JokerCardObtained    { get; }
+    public JackpotOutcome Outcome    { get; }
     public JackpotBehaviourToken Token { get; }
-    public JackpotLeoRelationState LeoRelationState { get; }
-    public JackpotRiskLevel RiskLevel { get; }
-    public int SpinCount { get; }
-    public int Reward { get; }
-    public int Debt { get; }
-    public int RiskScore { get; }
-    public bool StoppedByPlayer { get; }
-    public bool SawHairpin { get; }
-    public bool SawDebt { get; }
+    public JackpotSymbolType LeftSymbol   { get; }
+    public JackpotSymbolType CenterSymbol { get; }
+    public JackpotSymbolType RightSymbol  { get; }
+    public int RevoltDelta     { get; }
+    public int ObedienceDelta  { get; }
+    public int AnalysisDelta   { get; }
+    public int SpinCount       { get; }
 
     public JackpotFinalResult(
+        string title,
+        string description,
+        bool refused,
+        bool isJackpot,
+        bool jokerCardObtained,
         JackpotOutcome outcome,
         JackpotBehaviourToken token,
-        JackpotLeoRelationState leoRelationState,
-        JackpotRiskLevel riskLevel,
-        int spinCount,
-        int reward,
-        int debt,
-        int riskScore,
-        bool stoppedByPlayer,
-        bool sawHairpin,
-        bool sawDebt)
+        JackpotSymbolType leftSymbol,
+        JackpotSymbolType centerSymbol,
+        JackpotSymbolType rightSymbol,
+        int revoltDelta,
+        int obedienceDelta,
+        int analysisDelta,
+        int spinCount)
     {
-        Outcome = outcome;
-        Token = token;
-        LeoRelationState = leoRelationState;
-        RiskLevel = riskLevel;
-        SpinCount = spinCount;
-        Reward = reward;
-        Debt = debt;
-        RiskScore = riskScore;
-        StoppedByPlayer = stoppedByPlayer;
-        SawHairpin = sawHairpin;
-        SawDebt = sawDebt;
+        Title             = title;
+        Description       = description;
+        Refused           = refused;
+        IsJackpot         = isJackpot;
+        JokerCardObtained = jokerCardObtained;
+        Outcome           = outcome;
+        Token             = token;
+        LeftSymbol        = leftSymbol;
+        CenterSymbol      = centerSymbol;
+        RightSymbol       = rightSymbol;
+        RevoltDelta       = revoltDelta;
+        ObedienceDelta    = obedienceDelta;
+        AnalysisDelta     = analysisDelta;
+        SpinCount         = spinCount;
     }
 }

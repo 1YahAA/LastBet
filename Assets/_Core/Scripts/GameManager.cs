@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -24,12 +23,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
@@ -45,7 +39,6 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance?.FadeIn();
     }
 
- 
     public void StartNewGame()
     {
         gameState.ResetAll();
@@ -53,25 +46,12 @@ public class GameManager : MonoBehaviour
         LoadSceneByIndex(0);
     }
 
-    public void ContinueGame()
-    {
-        LoadSceneByIndex(gameState.currentSceneIndex);
-    }
-
- 
-    public void LoadNextScene()
-    {
-        LoadSceneByIndex(gameState.currentSceneIndex + 1);
-    }
+    public void ContinueGame() => LoadSceneByIndex(gameState.currentSceneIndex);
+    public void LoadNextScene() => LoadSceneByIndex(gameState.currentSceneIndex + 1);
 
     public void LoadSceneByIndex(int index)
     {
-        if (index >= sceneOrder.Length)
-        {
-            LoadEnding();
-            return;
-        }
-
+        if (index >= sceneOrder.Length) { LoadEnding(); return; }
         gameState.currentSceneIndex = index;
         SaveSystem.Save(gameState);
         SetState(GameplayState.Playing);
@@ -85,7 +65,6 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene("MainMenu");
     }
 
- 
     public void LoadMiniGame(string miniGameSceneName, MiniGameType miniGameType)
     {
         gameState.returnSceneName = sceneOrder[gameState.currentSceneIndex];
@@ -98,16 +77,33 @@ public class GameManager : MonoBehaviour
     {
         SaveSystem.Save(gameState);
         SetState(GameplayState.Playing);
-        SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
+        string scene = string.IsNullOrEmpty(gameState.returnSceneName)
+            ? sceneOrder[gameState.currentSceneIndex]
+            : gameState.returnSceneName;
+        SceneTransition.Instance.FadeToScene(scene);
+    }
+
+    // Мини-игра коктейлей (бар)
+    public void FinishBarMiniGame(bool won)
+    {
+        gameState.ApplyBarMiniGameResult(won);
+        BarDirector.SetMiniGameResult(won);
+        ReturnFromMiniGame();
+    }
+
+    // Мини-игра Джокер (память) — кабинет Виктора
+    public void FinishJokerMiniGame(bool won)
+    {
+        gameState.ApplyJokerResult(won);
+        OfficeDirector.SetMiniGameResult(won);
+        ReturnFromMiniGame();
     }
 
     public void FinishMiniGame(bool won)
     {
         gameState.AddToken(won ? TokenType.Revolt :
             gameState.currentMiniGame == MiniGameType.CardGame
-                ? TokenType.Obedience
-                : TokenType.Analysis);
-
+                ? TokenType.Obedience : TokenType.Analysis);
         SaveSystem.Save(gameState);
         SetState(GameplayState.Playing);
         SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
@@ -121,21 +117,16 @@ public class GameManager : MonoBehaviour
         SceneTransition.Instance.FadeToScene(gameState.returnSceneName);
     }
 
- 
     public void LoadEnding()
     {
         SetState(GameplayState.Ending);
         SaveSystem.Delete();
-        string endingScene = gameState.GetEnding().ToString();
-        Debug.Log($"[GameManager] Концовка: {endingScene}");
-        SceneTransition.Instance.FadeToScene(endingScene);
+        SceneTransition.Instance.FadeToScene(gameState.GetEnding().ToString());
     }
-
 
     public void Pause()
     {
-        if (CurrentState != GameplayState.Playing &&
-            CurrentState != GameplayState.Dialogue) return;
+        if (CurrentState != GameplayState.Playing && CurrentState != GameplayState.Dialogue) return;
         SetState(GameplayState.Paused);
         Time.timeScale = 0f;
     }
@@ -147,7 +138,6 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-
     public void OnDialogueStart() => SetState(GameplayState.Dialogue);
     public void OnDialogueEnd() => SetState(GameplayState.Playing);
 
@@ -156,8 +146,5 @@ public class GameManager : MonoBehaviour
     public bool IsInDialogue => CurrentState == GameplayState.Dialogue;
     public bool IsInEnding => CurrentState == GameplayState.Ending;
 
-    private void SetState(GameplayState newState)
-    {
-        CurrentState = newState;
-    }
+    private void SetState(GameplayState newState) => CurrentState = newState;
 }

@@ -2,21 +2,53 @@ using System;
 using UnityEngine;
 
 [Serializable]
-public class LastBetCardData
+public sealed class LastBetCardData
 {
-    [Header("Logic")]
-    public LastBetCardType cardType;
-    public LastBetStoryClue storyClue;
-    public int informationValue = 1;
-    public int suspicionValue = 0;
+    [Header("Symbol")]
+    public LastBetSymbolType symbolType = LastBetSymbolType.None;
 
     [Header("Visual")]
-    public Sprite clueSprite;
+    public Sprite symbolSprite;
     public string title;
     [TextArea(1, 3)] public string cardDescription;
-    [TextArea(2, 5)] public string evidencePanelDescription;
-    [TextArea(1, 3)] public string croupierLine;
 
-    public bool IsJoker => cardType == LastBetCardType.Joker;
-    public bool AddsEvidence => !IsJoker && storyClue != LastBetStoryClue.None;
+    [Header("Victor Line")]
+    [TextArea(1, 3)] public string victorLine;
+
+    [Header("Score Values")]
+    public int freedomValue;
+    public int cageValue;
+    public int truthValue;
+    public int pressureValue;
+
+    public bool IsJoker => symbolType == LastBetSymbolType.Joker;
+
+    public void NormalizeValuesFromSymbol()
+    {
+        freedomValue = 0;
+        cageValue = 0;
+        truthValue = 0;
+        pressureValue = 0;
+
+        switch (symbolType)
+        {
+            case LastBetSymbolType.Bird:
+                freedomValue = 1;
+                break;
+
+            case LastBetSymbolType.Cage:
+            case LastBetSymbolType.Cocktail:
+                cageValue = 1;
+                break;
+
+            case LastBetSymbolType.Eye:
+            case LastBetSymbolType.Microphone:
+                truthValue = 1;
+                break;
+
+            case LastBetSymbolType.Joker:
+                pressureValue = 1;
+                break;
+        }
+    }
 }

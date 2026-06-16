@@ -4,128 +4,135 @@ using UnityEngine;
 public sealed class JackpotSlotMachine : MonoBehaviour
 {
     [Header("Барабаны")]
-    [SerializeField] private JackpotReelController[] reels;
+    [SerializeField] private JackpotReelController leftReel;
+    [SerializeField] private JackpotReelController centerReel;
+    [SerializeField] private JackpotReelController rightReel;
 
-    [Header("Базовые веса символов")]
-    [SerializeField] private JackpotWeightedSymbol[] baseWeights =
+    [Header("Вес символов")]
+    [SerializeField] private JackpotWeightedSymbol[] weightedSymbols =
     {
-        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Blank, weight = 35 },
-        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Coin, weight = 35 },
-        new JackpotWeightedSymbol { symbol = JackpotSymbolType.DoubleCoin, weight = 18 },
-        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Debt, weight = 8 },
-        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Hairpin, weight = 4 }
+        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Bird, weight = 20 },
+        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Cage, weight = 20 },
+        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Eye, weight = 20 },
+        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Cocktail, weight = 20 },
+        new JackpotWeightedSymbol { symbol = JackpotSymbolType.Microphone, weight = 20 }
     };
 
-    [Header("Эскалация")]
-    [SerializeField] private int extraDebtWeightPerSpin = 3;
-    [SerializeField] private int extraHairpinWeightAfterRisk = 65;
-    [SerializeField] private float delayBetweenReels = 0.12f;
+    [Header("Джекпот")]
+    [Range(0f, 1f)]
+    [SerializeField] private float firstSpinJackpotChance = 0.2f;
 
-    public IEnumerator SpinRoutine(JackpotRiskModel riskModel, System.Action<JackpotSpinResult> onCompleted)
+    [Range(0f, 1f)]
+    [SerializeField] private float secondSpinJackpotChance = 0.35f;
+
+    [SerializeField] private bool treatAnyTripleAsJackpot = true;
+
+    [Header("Длительность барабанов")]
+    [SerializeField] private float leftSpinDuration = 1.1f;
+    [SerializeField] private float centerSpinDuration = 1.35f;
+    [SerializeField] private float rightSpinDuration = 1.6f;
+
+    public IEnumerator SpinRoutine(int spinIndex, bool mustRollJackpot, System.Action<JackpotSpinResult> onComplete)
     {
-        JackpotSymbolType[] symbols = RollSymbols(riskModel);
-        JackpotSpinResult result = BuildResult(symbols, riskModel);
+        bool isJackpot = mustRollJackpot || ShouldTriggerEarlyJackpot(spinIndex);
 
-        if (reels != null)
+        JackpotSymbolType left;
+        JackpotSymbolType center;
+        JackpotSymbolType right;
+
+        if (isJackpot)
         {
-            for (int i = 0; i < reels.Length; i++)
-            {
-                if (reels[i] == null)
-                    continue;
+            JackpotSymbolType jackpotSymbol = RollSymbol();
+            left = jackpotSymbol;
+            center = jackpotSymbol;
+            right = jackpotSymbol;
+        }
+        else
+        {
+            left = RollSymbol();
+            center = RollSymbol();
+            right = RollSymbol();
 
-                JackpotSymbolType symbol = i < symbols.Length ? symbols[i] : JackpotSymbolType.Blank;
-                yield return reels[i].SpinTo(symbol);
-
-                if (delayBetweenReels > 0f)
-                    yield return new WaitForSeconds(delayBetweenReels);
-            }
+            if (treatAnyTripleAsJackpot && IsTriple(left, center, right))
+                isJackpot = true;
         }
 
-        onCompleted?.Invoke(result);
+        bool leftDone = leftReel == null;
+        bool centerDone = centerReel == null;
+        bool rightDone = rightReel == null;
+
+        if (leftReel != null)
+            StartCoroutine(SpinReel(leftReel, left, leftSpinDuration, () => leftDone = true));
+
+        if (centerReel != null)
+            StartCoroutine(SpinReel(centerReel, center, centerSpinDuration, () => centerDone = true));
+
+        if (rightReel != null)
+            StartCoroutine(SpinReel(rightReel, right, rightSpinDuration, () => rightDone = true));
+
+        while (!leftDone || !centerDone || !rightDone)
+            yield return null;
+
+        onComplete?.Invoke(new JackpotSpinResult(left, center, right, isJackpot));
     }
 
-    private JackpotSymbolType[] RollSymbols(JackpotRiskModel riskModel)
+    private IEnumerator SpinReel(
+        JackpotReelController reel,
+        JackpotSymbolType result,
+        float duration,
+        System.Action onDone)
     {
-        int count = reels != null && reels.Length > 0 ? reels.Length : 3;
-        JackpotSymbolType[] result = new JackpotSymbolType[count];
-
-        for (int i = 0; i < count; i++)
-            result[i] = RollOne(riskModel);
-
-        return result;
+        yield return reel.SpinTo(result, duration);
+        reel.SetSymbolInstant(result);
+        onDone?.Invoke();
     }
 
-    private JackpotSymbolType RollOne(JackpotRiskModel riskModel)
+    private bool ShouldTriggerEarlyJackpot(int spinIndex)
     {
-        int total = 0;
+        if (spinIndex <= 1)
+            return Random.value <= firstSpinJackpotChance;
 
-        foreach (var weighted in baseWeights)
-            total += Mathf.Max(0, GetRuntimeWeight(weighted, riskModel));
+        if (spinIndex == 2)
+            return Random.value <= secondSpinJackpotChance;
 
-        if (total <= 0)
-            return JackpotSymbolType.Blank;
+        return false;
+    }
 
-        int roll = Random.Range(0, total);
-        int cumulative = 0;
+    private JackpotSymbolType RollSymbol()
+    {
+        if (weightedSymbols == null || weightedSymbols.Length == 0)
+            return JackpotSymbolType.Bird;
 
-        foreach (var weighted in baseWeights)
+        int totalWeight = 0;
+
+        foreach (var item in weightedSymbols)
         {
-            cumulative += Mathf.Max(0, GetRuntimeWeight(weighted, riskModel));
-            if (roll < cumulative)
-                return weighted.symbol;
+            if (item.weight > 0)
+                totalWeight += item.weight;
         }
 
-        return JackpotSymbolType.Blank;
-    }
+        if (totalWeight <= 0)
+            return JackpotSymbolType.Bird;
 
-    private int GetRuntimeWeight(JackpotWeightedSymbol weighted, JackpotRiskModel riskModel)
-    {
-        int weight = weighted.weight;
+        int roll = Random.Range(1, totalWeight + 1);
+        int current = 0;
 
-        if (riskModel == null)
-            return weight;
-
-        if (weighted.symbol == JackpotSymbolType.Debt)
-            weight += riskModel.SpinCount * extraDebtWeightPerSpin;
-
-        if (weighted.symbol == JackpotSymbolType.Hairpin && riskModel.RiskScore >= extraHairpinWeightAfterRisk)
-            weight += 8;
-
-        return weight;
-    }
-
-    private JackpotSpinResult BuildResult(JackpotSymbolType[] symbols, JackpotRiskModel riskModel)
-    {
-        int reward = 0;
-        int debt = 0;
-        int risk = 12;
-
-        foreach (var symbol in symbols)
+        foreach (var item in weightedSymbols)
         {
-            switch (symbol)
-            {
-                case JackpotSymbolType.Coin:
-                    reward += 1;
-                    risk += 3;
-                    break;
-                case JackpotSymbolType.DoubleCoin:
-                    reward += 2;
-                    risk += 6;
-                    break;
-                case JackpotSymbolType.Debt:
-                    debt += 1;
-                    reward -= 1;
-                    risk += 22;
-                    break;
-                case JackpotSymbolType.Hairpin:
-                    risk += 16;
-                    break;
-            }
+            if (item.weight <= 0)
+                continue;
+
+            current += item.weight;
+
+            if (roll <= current)
+                return item.symbol;
         }
 
-        if (riskModel != null && (int)riskModel.CurrentRiskLevel >= (int)JackpotRiskLevel.High)
-            risk += 8;
+        return JackpotSymbolType.Bird;
+    }
 
-        return new JackpotSpinResult(symbols, reward, risk, debt);
+    private static bool IsTriple(JackpotSymbolType left, JackpotSymbolType center, JackpotSymbolType right)
+    {
+        return left == center && center == right;
     }
 }

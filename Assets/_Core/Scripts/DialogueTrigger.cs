@@ -9,21 +9,13 @@ public class DialogueTrigger : MonoBehaviour
     public DialogueRunner dialogueRunner;
 
     [Header("UI")]
-    [Tooltip("ContinueButton — Raycast выключен когда диалог не идёт")]
     public Button continueButton;
-
-    [Tooltip("CanvasGroup на Line Presenter — управляем альфой вручную")]
     public CanvasGroup linePresenterCanvasGroup;
 
     void Start()
     {
-        if (dialogueRunner == null)
-        {
-            return;
-        }
-
+        if (dialogueRunner == null) return;
         dialogueRunner.onDialogueComplete.AddListener(OnDialogueFinished);
-
         StartCoroutine(HideOnStart());
     }
 
@@ -39,21 +31,15 @@ public class DialogueTrigger : MonoBehaviour
             dialogueRunner.onDialogueComplete.RemoveListener(OnDialogueFinished);
     }
 
-
     public void StartDialogueNode(string nodeName)
     {
         if (dialogueRunner == null) return;
-
-        if (dialogueRunner.IsDialogueRunning)
-        {
-            return;
-        }
+        if (dialogueRunner.IsDialogueRunning) return;
 
         if (GameManager.Instance != null)
             GameManager.Instance.OnDialogueStart();
 
         SetDialogueVisible(true);
-
         dialogueRunner.StartDialogue(nodeName);
     }
 
@@ -61,11 +47,8 @@ public class DialogueTrigger : MonoBehaviour
     {
         if (GameManager.Instance != null)
             GameManager.Instance.OnDialogueEnd();
-
         SetDialogueVisible(false);
-
     }
-
 
     private void SetDialogueVisible(bool visible)
     {
@@ -83,7 +66,6 @@ public class DialogueTrigger : MonoBehaviour
             if (img != null) img.raycastTarget = visible;
         }
     }
-
 
     [YarnCommand("add_token")]
     public static void YarnAddToken(string tokenName)
@@ -126,6 +108,12 @@ public class DialogueTrigger : MonoBehaviour
     public static void YarnLaunchRoulette()
     {
         GameManager.Instance.LoadMiniGame("Roulette", MiniGameType.Roulette);
+    }
+
+    [YarnCommand("launch_cocktail_game")]
+    public static void YarnLaunchCocktailGame()
+    {
+        GameManager.Instance.LoadMiniGame("CoctailesMiniGame", MiniGameType.CardGame);
     }
 
     [YarnCommand("enable_door")]

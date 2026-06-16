@@ -4,15 +4,13 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-// Визуальное представление карты на столе
-public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public sealed class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Images")]
     [SerializeField] private Image baseImage;
     [SerializeField] private Image backImage;
-    [SerializeField] private Image frameImage;
-    [SerializeField] private Image clueImage;
-    [SerializeField] private Image jokerFullCardImage;
+    [SerializeField] private Image symbolImage;
+    [SerializeField] private Image jokerCardImage;
 
     [Header("Texts")]
     [SerializeField] private TMP_Text titleText;
@@ -21,15 +19,16 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [Header("Info Block")]
     [SerializeField] private GameObject infoBlock;
 
-    [Header("Hover Inspect")]
+    [Header("Hover")]
     [SerializeField] private bool inspectOnHover = true;
     [SerializeField] private Transform visualRoot;
-    [SerializeField] private float hoverScale = 1.18f;
+    [SerializeField] private float hoverScale = 1.12f;
     [SerializeField] private float hoverMoveY = 0f;
     [SerializeField] private float hoverDuration = 0.12f;
     [SerializeField] private int hoverSortingOrder = 50;
 
     private LastBetCardData _data;
+    private LastBetCardTooltip _tooltip;
     private bool _opened;
 
     private Vector3 _initialVisualScale;
@@ -37,7 +36,6 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
     private bool _initialStateRecorded;
 
     private Canvas _sortingCanvas;
-    private bool _createdSortingCanvas;
     private Coroutine _hoverRoutine;
 
     public LastBetCardData Data => _data;
@@ -58,10 +56,7 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
         _sortingCanvas = GetComponent<Canvas>();
         if (_sortingCanvas == null)
-        {
             _sortingCanvas = gameObject.AddComponent<Canvas>();
-            _createdSortingCanvas = true;
-        }
 
         _sortingCanvas.overrideSorting = false;
         _sortingCanvas.sortingOrder = 0;
@@ -69,22 +64,28 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void Setup(
         LastBetCardData data,
+        LastBetCardTooltip tooltip,
         Sprite cardBaseSprite,
         Sprite cardBackSprite,
-        Sprite cardFrameSprite,
-        Sprite jokerFullCardSprite)
+        Sprite jokerCardSprite)
     {
         _data = data;
+        _tooltip = tooltip;
         _opened = false;
 
         RecordVisualInitialState();
 
-        if (baseImage != null) baseImage.sprite = cardBaseSprite;
-        if (backImage != null) backImage.sprite = cardBackSprite;
-        if (frameImage != null) frameImage.sprite = cardFrameSprite;
+        if (baseImage != null)
+            baseImage.sprite = cardBaseSprite;
 
-        if (clueImage != null) clueImage.sprite = data != null ? data.clueSprite : null;
-        if (jokerFullCardImage != null) jokerFullCardImage.sprite = jokerFullCardSprite;
+        if (backImage != null)
+            backImage.sprite = cardBackSprite;
+
+        if (symbolImage != null)
+            symbolImage.sprite = data != null ? data.symbolSprite : null;
+
+        if (jokerCardImage != null)
+            jokerCardImage.sprite = jokerCardSprite;
 
         ShowClosed();
     }
@@ -96,10 +97,12 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
         RestoreVisualImmediate();
         SetHoverSorting(false);
 
+        if (_tooltip != null)
+            _tooltip.Hide();
+
         SetActive(baseImage, false);
-        SetActive(frameImage, false);
-        SetActive(clueImage, false);
-        SetActive(jokerFullCardImage, false);
+        SetActive(symbolImage, false);
+        SetActive(jokerCardImage, false);
         SetActive(backImage, true);
 
         SetInfoBlock(false);
@@ -115,9 +118,8 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
         SetActive(backImage, false);
         SetActive(baseImage, !isJoker);
-        SetActive(frameImage, !isJoker);
-        SetActive(clueImage, !isJoker);
-        SetActive(jokerFullCardImage, isJoker);
+        SetActive(symbolImage, !isJoker);
+        SetActive(jokerCardImage, isJoker);
 
         SetInfoBlock(!isJoker);
         SetText(titleText, _data != null ? _data.title : string.Empty);
@@ -130,11 +132,13 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
             return;
 
         SetHoverSorting(true);
+        AnimateTo(
+            _initialVisualScale * hoverScale,
+            _initialVisualLocalPosition + new Vector3(0f, hoverMoveY, 0f)
+        );
 
-        Vector3 targetScale = _initialVisualScale * hoverScale;
-        Vector3 targetPosition = _initialVisualLocalPosition + new Vector3(0f, hoverMoveY, 0f);
-
-        AnimateTo(targetScale, targetPosition);
+        if (_tooltip != null)
+            _tooltip.Show(_data, transform as RectTransform);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -142,7 +146,10 @@ public class LastBetCardView : MonoBehaviour, IPointerEnterHandler, IPointerExit
         if (!inspectOnHover || !_opened)
             return;
 
-        AnimateTo(_initialVisualScale, _initialVisualLocalPosition, disableSortingAfter: true);
+        AnimateTo(_initialVisualScale, _initialVisualLocalPosition, true);
+
+        if (_tooltip != null)
+            _tooltip.Hide();
     }
 
     private void RecordVisualInitialState()
