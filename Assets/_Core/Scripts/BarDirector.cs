@@ -6,7 +6,6 @@ public class BarDirector : MonoBehaviour
 {
     [Header("Кадр 3.1/3.2 — Общий вид бара")]
     public GameObject bgBar;
-    public GameObject leo;
 
     [Header("Кадр 3.3 — Крупный план стойки")]
     public GameObject bgBarCounter;
@@ -27,8 +26,10 @@ public class BarDirector : MonoBehaviour
     void Start()
     {
         HideAll();
+
         bool returned = _returnedFromMiniGame;
         _returnedFromMiniGame = false;
+
         if (returned)
             StartCoroutine(AfterMiniGame(_miniGameWon));
         else
@@ -38,7 +39,6 @@ public class BarDirector : MonoBehaviour
     void HideAll()
     {
         SetActive(bgBar, false);
-        SetActive(leo, false);
         SetActive(bgBarCounter, false);
         SetActive(bgAfterGame, false);
 
@@ -52,9 +52,9 @@ public class BarDirector : MonoBehaviour
     IEnumerator RunScene()
     {
         SetActive(bgBar, true);
-        SetActive(leo, true);
 
         yield return new WaitForSeconds(0.5f);
+
         dialogueTrigger.StartDialogueNode("Bar_Scene");
         yield return WaitDialogue();
     }
@@ -62,14 +62,16 @@ public class BarDirector : MonoBehaviour
     IEnumerator AfterMiniGame(bool won)
     {
         SetActive(bgBar, true);
-        SetActive(leo, true);
+
         yield return new WaitForSeconds(1.0f);
+
         yield return FadeOverlay(0f, 1f, 0.4f);
         SetActive(bgBar, false);
-        SetActive(leo, false);
         SetActive(bgBarCounter, true);
         yield return FadeOverlay(1f, 0f, 0.5f);
+
         yield return new WaitForSeconds(0.8f);
+
         yield return FadeOverlay(0f, 1f, 0.4f);
         SetActive(bgBarCounter, false);
         SetActive(bgAfterGame, true);
@@ -91,7 +93,6 @@ public class BarDirector : MonoBehaviour
         float doorClipLength = (doorSound != null && doorSound.clip != null)
             ? doorSound.clip.length
             : 1.0f;
-
         yield return new WaitForSeconds(doorClipLength);
 
         yield return FadeOverlay(0f, 1f, 0.5f);

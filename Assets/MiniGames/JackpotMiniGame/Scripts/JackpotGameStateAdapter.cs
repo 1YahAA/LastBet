@@ -36,7 +36,11 @@ public sealed class JackpotGameStateAdapter : MonoBehaviour
         }
 
         ApplyResult(result);
-        OfficeDirector.SetMiniGameResult(result.IsJackpot);
+
+        // Джекпот теперь используется в гримёрке (сцена 2)
+        // Сообщаем DressingRoomDirector результат — он откроет дверь
+        DressingRoomDirector.SetMiniGameResultStatic(result.IsJackpot);
+
         GameManager.Instance.ReturnFromMiniGame();
     }
 }

@@ -37,6 +37,7 @@ public class DressingRoomDirector : MonoBehaviour
     private bool _doorAttempted = false;
 
     private static bool _miniGameJustFinished = false;
+    private static bool _miniGameWon = false;
 
     void Start()
     {
@@ -47,7 +48,7 @@ public class DressingRoomDirector : MonoBehaviour
 
         if (returnedFromMini)
         {
-            Debug.Log("[Dressing] Вернулись из мини-игры → дверь");
+            Debug.Log($"[Dressing] Вернулись из мини-игры (won={_miniGameWon}) → дверь");
             StartDoorPhase(machineUsed: true);
         }
         else
@@ -249,6 +250,12 @@ public class DressingRoomDirector : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.IsInDialogue) return;
         _miniGameJustFinished = true;
         dialogueTrigger.StartDialogueNode("Dressing_Machine_Intro");
+    }
+
+    public static void SetMiniGameResultStatic(bool won)
+    {
+        _miniGameJustFinished = true;
+        _miniGameWon = won;
     }
 
     IEnumerator PlayAndLeave(string node)
